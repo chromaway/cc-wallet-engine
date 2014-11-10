@@ -25,10 +25,10 @@ function AssetModels(wallet, walletEngine) {
   this.wallet = wallet
   this.walletEngine = walletEngine
 
-  var delayedUpdate = cumulativeDelayed(function () {this.update()}.bind(this), 100)
+  //var delayedUpdate = cumulativeDelayed(function () {this.update()}.bind(this), 100)
 
-  this.wallet.getTxDb().on('update', delayedUpdate)
-  this.wallet.getTxDb().on('error', delayedUpdate)
+  //this.wallet.getTxDb().on('update', delayedUpdate)
+  //this.wallet.getTxDb().on('error', delayedUpdate)
 }
 
 util.inherits(AssetModels, events.EventEmitter)
@@ -54,15 +54,13 @@ AssetModels.prototype.update = function() {
 
   self.wallet.getAllAssetDefinitions().forEach(function(assetdef) {
     var assetId = assetdef.getId()
+    if (!_.isUndefined(self.models[assetId]))
+      return
 
-    if (_.isUndefined(self.models[assetId])) {
-      self.models[assetId] = new AssetModel(self.walletEngine, self.wallet, assetdef)
-      self.models[assetId].on('update', function() { self.emit('update') })
-
-      self.emit('update')
-    }
-
+    self.models[assetId] = new AssetModel(self.walletEngine, self.wallet, assetdef)
+    self.models[assetId].on('update', function() { self.emit('update') })
     self.models[assetId].update()
+    self.emit('update')
   })
 }
 

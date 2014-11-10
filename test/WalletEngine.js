@@ -8,11 +8,12 @@ describe('WalletEngine', function() {
   var walletEngine
 
   beforeEach(function() {
-    walletEngine = new WalletEngine()
+    walletEngine = new WalletEngine({ testnet: true })
   })
 
   afterEach(function() {
     walletEngine.ccWallet.clearStorage()
+    delete walletEngine
   })
 
   it('generateMnemonic', function() {

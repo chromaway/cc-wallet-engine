@@ -20,7 +20,10 @@ function WalletEngine(opts) {
   this.setCallback(function() {})
   this.assetModels = null
 
-  opts = _.extend({ testnet: false }, opts)
+  opts = _.extend({
+    testnet: false,
+    blockchain: 'NaiveBlockchain'
+  }, opts)
   this.ccWallet = new ccWallet(opts)
 
   if (this.ccWallet.isInitialized())

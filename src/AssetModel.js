@@ -22,13 +22,15 @@ var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
  * @param {cc-wallet-core.asset.AssetDefinition} assetdef
  */
 function AssetModel(walletEngine, wallet, assetdef) {
-  events.EventEmitter.call(this)
+  var self = this
 
-  this.walletEngine = walletEngine
-  this.wallet = wallet
-  this.assetdef = assetdef
+  events.EventEmitter.call(self)
 
-  this.props = {
+  self.walletEngine = walletEngine
+  self.wallet = wallet
+  self.assetdef = assetdef
+
+  self.props = {
     moniker: '',
     address: '',
     unconfirmedBalance: '',
@@ -36,6 +38,10 @@ function AssetModel(walletEngine, wallet, assetdef) {
     totalBalance: '',
     historyEntries: []
   }
+
+  self.wallet.getCoinManager().on('touchAsset', function(assetdef) {
+    if (self.assetdef.getId() === assetdef.getId()) { self.update() }
+  })
 }
 
 util.inherits(AssetModel, events.EventEmitter)

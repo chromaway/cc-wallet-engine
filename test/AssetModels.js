@@ -11,13 +11,14 @@ describe('AssetModels', function() {
   var wallet, assetModels
 
   beforeEach(function() {
-    wallet = new ccWallet({ testnet: true })
+    wallet = new ccWallet({ testnet: true, blockchain: 'NaiveBlockchain' })
     wallet.initialize('12355564466111166655222222222222')
     assetModels = new AssetModels(wallet)
   })
 
   afterEach(function() {
     wallet.clearStorage()
+    delete wallet
   })
 
   it('instance of AssetModels', function() {

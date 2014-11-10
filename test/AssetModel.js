@@ -6,13 +6,12 @@ var HistoryEntryModel = require('../src/HistoryEntryModel')
 
 
 describe('AssetModel', function() {
-  var walletEngine, assetModel
+  var walletEngine
 
   beforeEach(function(done) {
     walletEngine = new WalletEngine({ testnet: true })
     walletEngine.ccWallet.initialize('12355564466111166655222222222222')
-    assetModel = new AssetModel(walletEngine, walletEngine.ccWallet, walletEngine.ccWallet.getAssetDefinitionByMoniker('bitcoin'))
-    walletEngine.ccWallet.fullScanAllAddresses(function(error) {
+    walletEngine.ccWallet.subscribeAndSyncAllAddresses(function(error) {
       expect(error).to.be.null
       done()
     })
@@ -20,9 +19,12 @@ describe('AssetModel', function() {
 
   afterEach(function() {
     walletEngine.ccWallet.clearStorage()
+    delete walletEngine
   })
 
   it('bitcoin AssetModel', function(done) {
+    var assetdef = walletEngine.ccWallet.getAssetDefinitionByMoniker('bitcoin')
+    var assetModel = new AssetModel(walletEngine, walletEngine.ccWallet, assetdef)
     var cnt = 0
     assetModel.on('update', function() {
       if (++cnt !== 6)

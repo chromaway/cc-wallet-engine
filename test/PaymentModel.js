@@ -15,9 +15,9 @@ describe.skip('PaymentModel', function() {
   var wallet, assetModel, paymentModel
 
   beforeEach(function(done) {
-    wallet = new ccWallet({ testnet: true })
+    wallet = new ccWallet({ testnet: true, blockchain: 'NaiveBlockchain' })
     wallet.initialize(seed)
-    wallet.fullScanAllAddresses(function(error) {
+    wallet.fullScanAllAddresses(function(error) { // subscribeAndSyncAll
       expect(error).to.be.null
 
       var cnt = 0

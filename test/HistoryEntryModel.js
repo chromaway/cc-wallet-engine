@@ -13,9 +13,9 @@ describe('HistoryEntryModel', function() {
   var wallet, assetModels, assetModel, historyEntry
 
   beforeEach(function(done) {
-    wallet = new ccWallet({ testnet: true })
+    wallet = new ccWallet({ testnet: true, blockchain: 'NaiveBlockchain' })
     wallet.initialize('12355564466111166655222222222222')
-    wallet.fullScanAllAddresses(function(error) {
+    wallet.subscribeAndSyncAllAddresses(function(error) {
       expect(error).to.be.null
 
       assetModels = new AssetModels(wallet)
@@ -40,6 +40,7 @@ describe('HistoryEntryModel', function() {
 
   afterEach(function() {
     wallet.clearStorage()
+    delete wallet
   })
 
   it('getTxId', function() {
@@ -56,18 +57,12 @@ describe('HistoryEntryModel', function() {
     expect(historyEntry.getValues()).to.deep.equal([ '0.01000000' ])
   })
 
-  // return AssetTargetModel
-  it.skip('getTargets', function() {
-    var expectedTargets = [
-      {
-        address: 'mv4jLE114t8KHL3LExNGBTXiP2dCjkaWJh',
-        formattedValue: '0.01000000',
-        assetMoniker: 'bitcoin'
-      }
-    ]
-    console.log(historyEntry.getTargets())
-    console.log(expectedTargets)
-    expect(historyEntry.getTargets()).to.deep.equal(expectedTargets)
+  it('getTargets', function() {
+    var models = historyEntry.getTargets()
+    expect(models).to.be.instanceof(Array).with.length(1)
+    expect(models[0].getAddress()).to.equal('mv4jLE114t8KHL3LExNGBTXiP2dCjkaWJh')
+    expect(models[0].getAssetMoniker()).to.equal('bitcoin')
+    expect(models[0].getFormattedValue()).to.equal('0.01000000')
   })
 
   it('isSend', function() {
