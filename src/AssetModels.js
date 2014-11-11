@@ -1,6 +1,6 @@
 var events = require('events')
 var util = require('util')
-var cumulativeDelayed = require('delayed').cumulativeDelayed
+//var cumulativeDelayed = require('delayed').cumulativeDelayed
 var _ = require('lodash')
 
 var AssetModel = require('./AssetModel')

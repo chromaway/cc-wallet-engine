@@ -9,6 +9,7 @@ describe('AssetModel', function() {
   var walletEngine
 
   beforeEach(function(done) {
+    localStorage.clear()
     walletEngine = new WalletEngine({ testnet: true })
     walletEngine.ccWallet.initialize('12355564466111166655222222222222')
     walletEngine.ccWallet.subscribeAndSyncAllAddresses(function(error) {
@@ -18,8 +19,9 @@ describe('AssetModel', function() {
   })
 
   afterEach(function() {
-    walletEngine.ccWallet.clearStorage()
-    delete walletEngine
+    localStorage.clear()
+    //walletEngine.ccWallet.clearStorage()
+    walletEngine = undefined
   })
 
   it('bitcoin AssetModel', function(done) {

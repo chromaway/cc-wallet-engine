@@ -13,7 +13,6 @@ describe('WalletEngine', function() {
 
   afterEach(function() {
     walletEngine.ccWallet.clearStorage()
-    delete walletEngine
   })
 
   it('generateMnemonic', function() {

@@ -4,7 +4,6 @@ var util = require('util')
 var HistoryEntryModel = require('./HistoryEntryModel')
 var PaymentModel = require('./PaymentModel')
 var PaymentRequestModel = require('./PaymentRequestModel')
-var _ = require('lodash')
 
 var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
 
@@ -136,7 +135,7 @@ AssetModel.prototype.update = function() {
     self.emit('update')
   }
 
-  var isBitcoin = (self.assetdef.getId() == 'JNu4AFCBNmTE1')
+  var isBitcoin = (self.assetdef.getId() === 'JNu4AFCBNmTE1')
   var address = self.wallet.getSomeAddress(self.assetdef, !isBitcoin)
   if (self.props.address !== address) {
     self.props.address = address

@@ -4,7 +4,6 @@ var BIP39 = require('bip39')
 var ccWallet = require('cc-wallet-core').Wallet
 
 var AssetModel = require('../src/AssetModel')
-var PaymentModel = require('../src/PaymentModel')
 
 
 describe.skip('PaymentModel', function() {
@@ -15,6 +14,7 @@ describe.skip('PaymentModel', function() {
   var wallet, assetModel, paymentModel
 
   beforeEach(function(done) {
+    localStorage.clear()
     wallet = new ccWallet({ testnet: true, blockchain: 'NaiveBlockchain' })
     wallet.initialize(seed)
     wallet.fullScanAllAddresses(function(error) { // subscribeAndSyncAll
@@ -33,7 +33,9 @@ describe.skip('PaymentModel', function() {
   })
 
   afterEach(function() {
-    wallet.clearStorage()
+    localStorage.clear()
+    //wallet.clearStorage()
+    wallet = undefined
   })
 
   it('checkAddress return true', function() {

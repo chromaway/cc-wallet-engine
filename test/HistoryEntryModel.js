@@ -1,7 +1,6 @@
 var expect = require('chai').expect
 
 var ccWallet = require('cc-wallet-core').Wallet
-var _ = require('lodash')
 var moment = require('moment')
 
 var AssetModels = require('../src/AssetModels')
@@ -13,6 +12,7 @@ describe('HistoryEntryModel', function() {
   var wallet, assetModels, assetModel, historyEntry
 
   beforeEach(function(done) {
+    localStorage.clear()
     wallet = new ccWallet({ testnet: true, blockchain: 'NaiveBlockchain' })
     wallet.initialize('12355564466111166655222222222222')
     wallet.subscribeAndSyncAllAddresses(function(error) {
@@ -39,8 +39,9 @@ describe('HistoryEntryModel', function() {
   })
 
   afterEach(function() {
-    wallet.clearStorage()
-    delete wallet
+    localStorage.clear()
+    //wallet.clearStorage()
+    wallet = undefined
   })
 
   it('getTxId', function() {
