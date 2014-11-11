@@ -1,8 +1,8 @@
 var expect = require('chai').expect
 
 var BIP39 = require('bip39')
-var ccWallet = require('cc-wallet-core').Wallet
 
+var WalletEngine = require('../src/WalletEngine')
 var AssetModel = require('../src/AssetModel')
 
 
@@ -11,17 +11,18 @@ describe.skip('PaymentModel', function() {
   var password = ''
   var seed = BIP39.mnemonicToSeedHex(mnemonic, password)
 
-  var wallet, assetModel, paymentModel
+  var assetModel, paymentModel, walletEngine
 
   beforeEach(function(done) {
     localStorage.clear()
-    wallet = new ccWallet({ testnet: true, blockchain: 'NaiveBlockchain' })
-    wallet.initialize(seed)
-    wallet.fullScanAllAddresses(function(error) { // subscribeAndSyncAll
+    walletEngine = new WalletEngine({ testnet: true, blockchain: 'NaiveBlockchain' })
+    walletEngine.ccWallet.initialize(seed)
+    walletEngine.ccWallet.subscribeAndSyncAllAddresses(function(error) { // subscribeAndSyncAll
       expect(error).to.be.null
 
       var cnt = 0
-      assetModel = new AssetModel(wallet, wallet.getAssetDefinitionByMoniker('bitcoin'))
+      var assetdef = walletEngine.ccWallet.getAssetDefinitionByMoniker('bitcoin')
+      assetModel = new AssetModel(walletEngine, walletEngine.ccWallet, assetdef)
       assetModel.on('update', function() {
         if (++cnt === 6) {
           paymentModel = assetModel.makePayment()
@@ -34,8 +35,8 @@ describe.skip('PaymentModel', function() {
 
   afterEach(function() {
     localStorage.clear()
-    //wallet.clearStorage()
-    wallet = undefined
+    //walletEngine.ccWallet.clearStorage()
+    walletEngine = undefined
   })
 
   it('checkAddress return true', function() {
@@ -90,7 +91,7 @@ describe.skip('PaymentModel', function() {
 
   it('send return txId', function(done) {
     paymentModel.addRecipient('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5WgW', '0.001')
-    paymentModel.setMnemonic(mnemonic, password)
+    paymentModel.setSeed(seed)
     paymentModel.send(function(error, txId) {
       expect(error).to.be.null
       expect(txId).to.be.an('string')

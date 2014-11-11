@@ -10,7 +10,7 @@ describe('AssetModel', function() {
 
   beforeEach(function(done) {
     localStorage.clear()
-    walletEngine = new WalletEngine({ testnet: true })
+    walletEngine = new WalletEngine({ testnet: true, blockchain: 'NaiveBlockchain' })
     walletEngine.ccWallet.initialize('12355564466111166655222222222222')
     walletEngine.ccWallet.subscribeAndSyncAllAddresses(function(error) {
       expect(error).to.be.null
