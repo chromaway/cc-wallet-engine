@@ -21,7 +21,7 @@ describe('HistoryEntryModel', function() {
       assetModels = new AssetModels(wallet)
       var cnt = 0
       assetModels.on('update', function() {
-        if (++cnt !== 7)
+        if (++cnt !== 5)
           return
 
         expect(assetModels.getAssetModels()).to.have.length(1)

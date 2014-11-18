@@ -29,7 +29,7 @@ describe('AssetModel', function() {
     var assetModel = new AssetModel(walletEngine, walletEngine.ccWallet, assetdef)
     var cnt = 0
     assetModel.on('update', function() {
-      if (++cnt !== 6)
+      if (++cnt !== 4)
         return
 
       expect(assetModel.getMoniker()).to.equal('bitcoin')

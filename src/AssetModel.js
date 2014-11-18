@@ -142,31 +142,25 @@ AssetModel.prototype.update = function() {
     self.emit('update')
   }
 
-  function updateBalance(balanceName, balance) {
-    var formattedBalance = self.assetdef.formatValue(balance)
+  self.wallet.getBalance(self.assetdef, function(error, balance) {
+    if (error)
+      return console.error(error)
 
-    if (self.props[balanceName] !== formattedBalance) {
-      self.props[balanceName] = formattedBalance
-      self.emit('update')
+    var isChanged = false
+    function updateBalance(balanceType, value) {
+      var formattedValue = self.assetdef.formatValue(value)
+      if (self.props[balanceType] !== formattedValue) {
+        self.props[balanceType] = formattedValue
+        isChanged = true
+      }
     }
-  }
 
-  self.wallet.getUnconfirmedBalance(self.assetdef, function(error, balance) {
-    if (error === null)
-      updateBalance('unconfirmedBalance', balance)
-    else console.log(error)
-  })
+    updateBalance('totalBalance', balance.total)
+    updateBalance('availableBalance', balance.available)
+    updateBalance('unconfirmedBalance', balance.unconfirmed)
 
-  self.wallet.getAvailableBalance(self.assetdef, function(error, balance) {
-    if (error === null)
-      updateBalance('availableBalance', balance)
-    else console.log(error)
-  })
-
-  self.wallet.getTotalBalance(self.assetdef, function(error, balance) {
-    if (error === null)
-      updateBalance('totalBalance', balance)
-    else console.log(error)
+    if (isChanged)
+      self.emit('update')
   })
 
   self.wallet.getHistory(self.assetdef, function(error, entries) {
