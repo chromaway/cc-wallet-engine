@@ -1,3 +1,5 @@
 module.exports = {
-  ProtocolObjects: require('./ProtocolObjects')
+  ProtocolObjects: require('./ProtocolObjects'),
+  Comm: require('./Comm'),
+  utils: require('./utils')
 }
