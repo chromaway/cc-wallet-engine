@@ -1,3 +1,6 @@
+var Q = require('q')
+
+
 /**
  * @typedef {Object} RecipientObject
  * @property {string} address
@@ -121,20 +124,24 @@ PaymentModel.prototype.send = function(cb) {
   self.readOnly = true
   self.status = 'sending'
 
-  function sendCoinsCallback(error, txId) {
-    if (error)
-      console.error(error)
+  var txId
+  var wallet = self.assetModel.wallet
+  Q.ninvoke(wallet, 'createTx', self.assetModel.assetdef, rawTargets).then(function(tx) {
+    return Q.ninvoke(wallet, 'transformTx', tx, 'signed', self.seed)
 
-    self.status = error ? 'failed' : 'send'
-    self.assetModel.update()
+  }).then(function(tx) {
+    txId = tx.getId()
+    return Q.ninvoke(wallet, 'sendTx', tx)
 
-    cb(error, txId)
-  }
+  }).catch(function(error) {
+    self.status = 'failed'
+    cb(error)
 
-  self.assetModel.wallet.sendCoins(
-    self.seed, self.assetModel.assetdef, rawTargets, sendCoinsCallback)
+  }).then(function() {
+    self.status = 'send'
+    cb(null, txId)
 
-  return self
+  }).finally(function() { self.assetModel.update() }).done()
 }
 
 // 'fresh', 'sending', 'sent', 'failed'

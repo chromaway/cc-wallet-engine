@@ -4,9 +4,13 @@ var util = require('util')
 var _ = require('lodash')
 
 var AssetModel = require('./AssetModel')
-
 var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
 
+
+/**
+ * @event AssetModels#error
+ * @param {Error}
+ */
 
 /**
  * @event AssetModels#update
@@ -16,63 +20,67 @@ var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
  * @class AssetModels
  * @extends events.EventEmitter
  *
- * @param {cc-wallet-core.Wallet} wallet
+ * @param {walletEngine} wallet
  */
-function AssetModels(wallet, walletEngine) {
-  events.EventEmitter.call(this)
+function AssetModels(wallet) {
+  var self = this
+  events.EventEmitter.call(self)
 
-  this.models = {}
-  this.wallet = wallet
-  this.walletEngine = walletEngine
+  self._wallet = wallet
+  self._coloredWallet = wallet.getColoredWallet()
+
+  self._models = {}
+
+  self._coloredWallet.getAllAssetDefinitions().forEach(self._addAssetModel.bind(self))
+  self._coloredWallet.on('newAsset', self._addAssetModel.bind(self))
 }
 
 util.inherits(AssetModels, events.EventEmitter)
 
 /**
- * @return {AssetModel[]}
+ * @param {AssetDefinition}
  */
-AssetModels.prototype.getAssetModels = function() {
+AssetModels.prototype._addAssetModel = function (assetdef) {
   var self = this
 
-  var assetModels = Object.keys(self.models).sort().map(function(assetId) {
-    return self.models[assetId]
-  })
+  var assetId = assetdef.getId()
+  if (!_.isUndefined(self._models[assetId])) { return }
 
-  return assetModels
+  var assetModel = new AssetModel(self._wallet, assetdef)
+  assetModel.on('error', function (error) { self.emit('error', error) })
+  assetModel.on('update', function () { self.emit('update') })
+
+  self._models[assetId] = assetModel
+
+  self.emit('update')
 }
 
 /**
- * Add new models and update all
+ * @return {AssetModel[]}
  */
-AssetModels.prototype.update = function() {
-  var self = this
-
-  self.wallet.getAllAssetDefinitions().forEach(function(assetdef) {
-    var assetId = assetdef.getId()
-
-    if (_.isUndefined(self.models[assetId])) {
-      self.models[assetId] = new AssetModel(self.walletEngine, self.wallet, assetdef)
-      self.models[assetId].on('update', function() { self.emit('update') })
-
-      self.emit('update')
-    }
-
-    self.models[assetId].update()
-  })
+AssetModels.prototype.getAssetModels = function () {
+  return _.values(this._models)
 }
 
 /**
  * @param {string} uri
  * @return {?AssetModel}
  */
-AssetModels.prototype.getAssetForURI = function(uri) {
+AssetModels.prototype.getAssetForURI = function (uri) {
   var params = decode_bitcoin_uri(uri)
   if (!params || !params.address)
     return null
 
   // by default assetId for bitcoin
   var assetId = params.asset_id || 'JNu4AFCBNmTE1'
-  return this.models[assetId]
+  return this._models[assetId] || null
+}
+
+/**
+ */
+AssetModels.prototype.removeListeners = function () {
+  this.removeAllListeners()
+  this.getAssetModels().forEach(function (am) { am.removeAllListeners() })
 }
 
 

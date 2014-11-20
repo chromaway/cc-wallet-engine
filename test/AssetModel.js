@@ -5,27 +5,31 @@ var AssetModel = require('../src/AssetModel')
 var HistoryEntryModel = require('../src/HistoryEntryModel')
 
 
-describe('AssetModel', function() {
-  var walletEngine, assetModel
+describe('AssetModel', function () {
+  var walletEngine
 
-  beforeEach(function(done) {
-    walletEngine = new WalletEngine({ testnet: true })
-    walletEngine.ccWallet.initialize('12355564466111166655222222222222')
-    assetModel = new AssetModel(walletEngine, walletEngine.ccWallet, walletEngine.ccWallet.getAssetDefinitionByMoniker('bitcoin'))
-    walletEngine.ccWallet.fullScanAllAddresses(function(error) {
-      expect(error).to.be.null
-      done()
-    })
+  beforeEach(function () {
+    localStorage.clear()
+    walletEngine = new WalletEngine({testnet: true, blockchain: 'NaiveBlockchain'})
+    walletEngine.getColoredWallet().initialize('12355564466111166655222222222222')
+    walletEngine._initializeWalletEngine()
+    walletEngine.on('error', function (error) { throw error })
   })
 
-  afterEach(function() {
-    walletEngine.ccWallet.clearStorage()
+  afterEach(function () {
+    walletEngine.removeListeners()
+    walletEngine.clearStorage()
+    walletEngine = undefined
   })
 
-  it('bitcoin AssetModel', function(done) {
+  it('bitcoin AssetModel', function (done) {
+    var assetdef = walletEngine.getColoredWallet().getAssetDefinitionByMoniker('bitcoin')
+    var assetModel = new AssetModel(walletEngine, assetdef)
+    assetModel.on('error', function (error) { throw error })
+
     var cnt = 0
-    assetModel.on('update', function() {
-      if (++cnt !== 6)
+    assetModel.on('update', function () {
+      if (++cnt !== 3)
         return
 
       expect(assetModel.getMoniker()).to.equal('bitcoin')
@@ -38,6 +42,5 @@ describe('AssetModel', function() {
 
       done()
     })
-    assetModel.update()
   })
 })

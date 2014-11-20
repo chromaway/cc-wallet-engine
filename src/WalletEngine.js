@@ -1,35 +1,118 @@
+var events = require('events')
+var util = require('util')
+
 var BIP39 = require('bip39')
 var ccWallet = require('cc-wallet-core').Wallet
-var CryptoJS = require("crypto-js")
+var CryptoJS = require('crypto-js')
 var _ = require('lodash')
 var store = require('store')
+var delayed = require('delayed')
+
 var AssetModels = require('./AssetModels')
 var JsonFormatter = require('./JsonFormatter')
 var cwpp = require('./cwpp')
 var CWPPPaymentModel = require('./CWPPPaymentModel')
 
+
+/**
+ * @event WalletEngine#error
+ * @param {Error}
+ */
+
+/**
+ * @event WalletEngine#update
+ */
+
 /**
  * @class WalletEngine
+ * @extends events.EventEmitter
  *
- * @param {Object} opts
- * @param {boolean} opts.testnet
+ * @param {Object} [opts]
+ * @param {boolean} [opts.testnet=false]
+ * @param {string} [opts.network=Electrum] Available: Chain, Electrum
+ * @param {string} [opts.blockchain=NaiveBlockchain] Available: NaiveBlockchain, VerifiedBlockchain
+ * @param {number} [opts.storageSaveTimeout=1000]
  */
 function WalletEngine(opts) {
-  this.setCallback(function() {})
-  this.assetModels = null
+  var self = this
+  events.EventEmitter.call(self)
 
-  opts = _.extend({ testnet: false }, opts)
-  this.ccWallet = new ccWallet(opts)
+  opts = _.extend({
+    testnet: false,
+    network: 'Electrum',
+    blockchain: 'NaiveBlockchain',
+    storageSaveTimeout: 1000
+  }, opts)
 
-  if (this.ccWallet.isInitialized())
-    this._initializeWalletEngine()
+  self.setCallback(function () {})
+  self._assetModels = null
+
+  self._coloredWallet = new ccWallet(opts)
+  self._coloredWallet.on('error', function (error) { self.emit('error', error) })
+
+  if (self._coloredWallet.isInitialized())
+    self._initializeWalletEngine()
+}
+
+util.inherits(WalletEngine, events.EventEmitter)
+
+/**
+ * @return {Wallet}
+ */
+WalletEngine.prototype.getColoredWallet = function () {
+  return this._coloredWallet
 }
 
 /**
- * @param {function} callback
+ * @callback WalletEngine~setCallback
  */
-WalletEngine.prototype.setCallback = function(callback) {
-  this.updateCallback = callback
+
+/**
+ * @param {WalletEngine~setCallback} callback
+ */
+WalletEngine.prototype.setCallback = function (callback) {
+  this._updateCallback = delayed.debounce(callback, 100)
+}
+
+/**
+ * @return {boolean}
+ */
+WalletEngine.prototype.isInitialized = function() {
+  return !!this.getSeed() && !!this.getPin() && this._coloredWallet.isInitialized()
+}
+
+/**
+ * @param {string} mnemonic
+ * @param {string} [password]
+ * @param {string} pin
+ * @throws {Error} If already initialized
+ */
+WalletEngine.prototype.initialize = function (mnemonic, password, pin) {
+  this.setSeed(mnemonic, password)
+  this._coloredWallet.initialize(this.getSeed())
+  this._initializeWalletEngine()
+  this.setPin(pin)
+  store.set('cc-wallet-engine__mnemonic', mnemonic)
+  store.set('cc-wallet-engine__encryptedpin', this.getPinEncrypted())
+}
+
+/**
+ */
+WalletEngine.prototype._initializeWalletEngine = function () {
+  var self = this
+
+  self._assetModels = new AssetModels(self)
+  self._assetModels.on('update', function () { self._updateCallback() })
+  self._assetModels.on('error', function (error) { self.emit('error', error) })
+
+  function subscribeCallback(error) {
+    if (error !== null) { self.emit('error', error) }
+  }
+  self._coloredWallet.on('newAddress', function () {
+    self._coloredWallet.subscribeAndSyncAllAddresses(subscribeCallback)
+    self.emit('update')
+  })
+  self._coloredWallet.subscribeAndSyncAllAddresses(subscribeCallback)
 }
 
 /**
@@ -38,32 +121,27 @@ WalletEngine.prototype.setCallback = function(callback) {
 WalletEngine.prototype.generateMnemonic = BIP39.generateMnemonic
 
 /**
- * TODO rename to more fitting isCurrentSeed 
+ * TODO rename to more fitting isCurrentSeed
+ * @param {string} mnemonic
+ * @param {string} password
  * @return {boolean}
  */
-WalletEngine.prototype.isCurrentMnemonic = function(mnemonic, password) {
+WalletEngine.prototype.isCurrentMnemonic = function (mnemonic, password) {
   var seed = BIP39.mnemonicToSeedHex(mnemonic, password)
-  return this.ccWallet.isCurrentSeed(seed)
+  return this._coloredWallet.isCurrentSeed(seed)
 }
 
 /**
  * @return {boolean}
  */
-WalletEngine.prototype.isInitialized = function() {
-  return !!this.getSeed() && !!this.getPin() && this.ccWallet.isInitialized()
-}
-
-/**
- * @return {boolean}
- */
-WalletEngine.prototype.hasPin = function() {
+WalletEngine.prototype.hasPin = function () {
   return !!this._pin
 }
 
 /**
  * @return {string}
  */
-WalletEngine.prototype.getPin = function() {
+WalletEngine.prototype.getPin = function () {
   return this._pin
 }
 
@@ -71,7 +149,7 @@ WalletEngine.prototype.getPin = function() {
  * @return {string}
  * @throws {Error} If seed es not set
  */
-WalletEngine.prototype.getPinEncrypted = function() {
+WalletEngine.prototype.getPinEncrypted = function () {
   if (!this.hasSeed())
     throw new Error('No seed set')
 
@@ -88,7 +166,7 @@ WalletEngine.prototype.getPinEncrypted = function() {
  * @param {strin} pin
  * @throws {Error} If seed es not set
  */
-WalletEngine.prototype.setPinEncrypted = function(encryptedPin) {
+WalletEngine.prototype.setPinEncrypted = function (encryptedPin) {
   if (!this.hasSeed())
     throw new Error('No seed set')
 
@@ -103,21 +181,21 @@ WalletEngine.prototype.setPinEncrypted = function(encryptedPin) {
 /**
  * @param {strin} pin
  */
-WalletEngine.prototype.setPin = function(pin) {
+WalletEngine.prototype.setPin = function (pin) {
   this._pin = pin
 }
 
 /**
  * @return {boolean}
  */
-WalletEngine.prototype.hasSeed = function() {
+WalletEngine.prototype.hasSeed = function () {
   return !!this.getSeed()
 }
 
 /**
  * @return {string}
  */
-WalletEngine.prototype.getSeed = function() {
+WalletEngine.prototype.getSeed = function () {
   return this._seed
 }
 
@@ -126,8 +204,8 @@ WalletEngine.prototype.getSeed = function() {
  * @param {string} [password]
  * @throws {Error} If wrong seed
  */
-WalletEngine.prototype.setSeed = function(mnemonic, password) {
-  if (!!this.ccWallet.isInitialized() && !this.isCurrentMnemonic(mnemonic, password))
+WalletEngine.prototype.setSeed = function (mnemonic, password) {
+  if (!!this._coloredWallet.isInitialized() && !this.isCurrentMnemonic(mnemonic, password))
     throw new Error('Wrong seed')
 
   // only ever store see here and only in ram
@@ -137,30 +215,30 @@ WalletEngine.prototype.setSeed = function(mnemonic, password) {
 /**
  * @return {string}
  */
-WalletEngine.prototype.stored_mnemonic = function() {
+WalletEngine.prototype.stored_mnemonic = function () {
   return store.get('cc-wallet-engine__mnemonic')
 }
 
 /**
  * @return {string}
  */
-WalletEngine.prototype.stored_encryptedpin = function() {
+WalletEngine.prototype.stored_encryptedpin = function () {
   return store.get('cc-wallet-engine__encryptedpin')
 }
 
 /**
  * @return {boolean}
  */
-WalletEngine.prototype.canResetSeed = function() {
+WalletEngine.prototype.canResetSeed = function () {
   return (
     !this.hasSeed() && 
     !!this.stored_mnemonic() && 
     !!this.stored_encryptedpin() && 
-    this.ccWallet.isInitialized()
+    this._coloredWallet.isInitialized()
   )
 }
 
-WalletEngine.prototype.resetSeed = function(password) {
+WalletEngine.prototype.resetSeed = function (password) {
   if (!this.canResetSeed())
     throw new Error('Cannot reset seed!')
 
@@ -169,55 +247,25 @@ WalletEngine.prototype.resetSeed = function(password) {
 }
 
 /**
- * @param {string} mnemonic
- * @param {string} [password]
- * @param {string} pin
- * @throws {Error} If already initialized
- */
-WalletEngine.prototype.initialize = function(mnemonic, password, pin) {
-  this.setSeed(mnemonic, password)
-  this.ccWallet.initialize(this.getSeed())
-  this._initializeWalletEngine()
-  this.setPin(pin)
-  store.set('cc-wallet-engine__mnemonic', mnemonic)
-  store.set('cc-wallet-engine__encryptedpin', this.getPinEncrypted())
-}
-
-/**
- */
-WalletEngine.prototype._initializeWalletEngine = function() {
-  this.assetModels = new AssetModels(this.ccWallet, this)
-  this.assetModels.on('update', function() { this.updateCallback() }.bind(this))
-}
-
-/**
  * @return {AssetModel[]}
  */
-WalletEngine.prototype.getAssetModels = function() {
-  if (!this.ccWallet.isInitialized())
+WalletEngine.prototype.getAssetModels = function () {
+  if (!this._coloredWallet.isInitialized())
     return []
 
-  return this.assetModels.getAssetModels()
+  return this._assetModels.getAssetModels()
 }
 
 /**
  */
 WalletEngine.prototype.getHistory = function () {
-  if (!this.ccWallet.isInitialized())
+  if (!this._coloredWallet.isInitialized())
     return []
 
-  var assetsEntries = this.assetModels.getAssetModels().map(function(am) {
-    return am.getHistory()
-  })
-
-  return _.flatten(assetsEntries)
-}
-
-/**
- */
-WalletEngine.prototype.update = function() {
-  if (this.ccWallet.isInitialized())
-    this.assetModels.update()
+  return _.chain(this._assetModels.getAssetModels())
+    .map(function (am) { return am.getHistory() })
+    .flatten()
+    .value()
 }
 
 /**
@@ -230,8 +278,8 @@ WalletEngine.prototype.update = function() {
  * @param {string} uri
  * @param {WalletEngine~makePaymentFromURI} cb
  */
-WalletEngine.prototype.makePaymentFromURI = function(uri, cb) {
-  if (!this.ccWallet.isInitialized())
+WalletEngine.prototype.makePaymentFromURI = function (uri, cb) {
+  if (!this._coloredWallet.isInitialized())
     return cb(new Error('not initialized'))
 
   var paymentModel
@@ -240,7 +288,7 @@ WalletEngine.prototype.makePaymentFromURI = function(uri, cb) {
   }
 
   if (cwpp.is_cwpp_uri(uri)) {
-    paymentModel = new CWPPPaymentModel(this.ccWallet, uri)
+    paymentModel = new CWPPPaymentModel(this, uri)
     if (this.hasSeed())
       paymentModel.setSeed(this.getSeed())
 
@@ -248,7 +296,7 @@ WalletEngine.prototype.makePaymentFromURI = function(uri, cb) {
   }
 
   try {
-    var asset = this.assetModels.getAssetForURI(uri)
+    var asset = this._assetModels.getAssetForURI(uri)
     if (!asset)
       return cb(new Error('Asset not recognized'))
 
@@ -258,10 +306,26 @@ WalletEngine.prototype.makePaymentFromURI = function(uri, cb) {
 
     callback(null)
 
-  } catch(error) {
+  } catch (error) {
     callback(error)
 
   }
+}
+
+/**
+ */
+WalletEngine.prototype.removeListeners = function () {
+  this.removeAllListeners()
+  this._coloredWallet.removeListeners()
+  if (this.isInitialized()) { this._assetModels.removeListeners() }
+}
+
+/**
+ */
+WalletEngine.prototype.clearStorage = function () {
+  this._coloredWallet.clearStorage()
+  store.remove('cc-wallet-engine__mnemonic')
+  store.remove('cc-wallet-engine__encryptedpin')
 }
 
 

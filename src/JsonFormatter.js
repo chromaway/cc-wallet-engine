@@ -1,4 +1,4 @@
-var CryptoJS = require("crypto-js")
+var CryptoJS = require('crypto-js')
 
 
 /**

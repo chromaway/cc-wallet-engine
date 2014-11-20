@@ -6,7 +6,6 @@ var cclib = require('cc-wallet-core').cclib
 var OperationalTx = require('cc-wallet-core').tx.OperationalTx
 var RawTx = require('cc-wallet-core').tx.RawTx
 
-
 /**
  * @class CWPPPaymentModel
  * @extends PaymentModel
@@ -52,7 +51,7 @@ CWPPPaymentModel.prototype.initialize = function (cb) {
     self.payreq = JSON.parse(body)
 
     var assetId = self.payreq.assetId
-    self.assetModel = self.walletEngine.getAssetModels().models[assetId]
+    self.assetModel = self.walletEngine.assetModels.models[assetId]
     if (!self.assetModel)
       return cb(new Error('asset not found'))
 
@@ -110,34 +109,6 @@ CWPPPaymentModel.prototype.selectCoins = function(cb) {
   })
 }
 
-/**
- * @callback CWPPPaymentModel~publishTx
- * @param {?Error} error
- * @param {string} txId
- */
-
-/**
- * @param {*} tx
- * @param {CWPPPaymentModel~publishTx} cb
- */
-CWPPPaymentModel.prototype.publishTx = function(tx, cb) {
-  // TODO: This code is from cc-wallet-core.Wallet, refactor later
-  var self = this.walletEngine.ccWallet
-  var signedTx = tx
-
-  Q.ninvoke(self.getBlockchain(), 'sendTx', tx).then(function () {
-    var timezoneOffset = new Date().getTimezoneOffset() * 60
-    var data = {
-      tx: signedTx,
-      timestamp: Math.round(+new Date()/1000) + timezoneOffset
-    }
-    return Q.ninvoke(self.getTxDb(), 'addUnconfirmedTx', data)
-
-  }).then(function() {
-    return signedTx.getId()
-
-  }).done(function(txId) { cb(null, txId) }, function(error) { cb(error) })
-}
 
 /**
  * @callback CWPPPaymentModel~send
@@ -194,19 +165,18 @@ CWPPPaymentModel.prototype.send = function(cb) {
     if (error)
       return fail(error)
 
-    var msg = cwpp.make_cinputs_proc_req_1(colordef.getColorDesc(), cinputs, change)
+    var msg = cwpp.make_cinputs_proc_req_1(colordef.getDesc(), cinputs, change)
     cwppProcess(msg, function(resp) {
-      var rawTx = RawTx.fromHex(resp.tx)
+      var rawTx = RawTx.fromHex(resp.tx_data)
       // TODO: check before signing tx!
-      // wallet.transformTx(rawTx, 'signed', self.seed, function(error, tx) {
-      transformTx(rawTx, 'signed', {wallet: wallet, seed: self.seed}, function(error, tx) {
+      wallet.transformTx(rawTx, 'partially-signed', self.seed, function(error, tx) {
         if (error)
           return fail(error)
 
-        msg = cwpp.make_cinputs_proc_req_2(tx.toHex())
+        msg = cwpp.make_cinputs_proc_req_2(tx.toHex(true))
         cwppProcess(msg, function(resp) {
-          // Todo: need load tx
-          self.publishTx(resp.tx, cb)
+            var rawTx = RawTx.fromHex(resp.tx_data);
+            wallet.sendTx(rawTx.toTransaction(), cb);
         })
       })
     })
