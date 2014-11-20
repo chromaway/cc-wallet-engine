@@ -20,19 +20,17 @@ var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
  * @class AssetModels
  * @extends events.EventEmitter
  *
- * @param {walletEngine} wallet
+ * @param {walletEngine} walletEngine
  */
-function AssetModels(wallet) {
+function AssetModels(walletEngine) {
   var self = this
   events.EventEmitter.call(self)
 
-  self._wallet = wallet
-  self._coloredWallet = wallet.getColoredWallet()
-
   self._models = {}
+  self._walletEngine = walletEngine
 
-  self._coloredWallet.getAllAssetDefinitions().forEach(self._addAssetModel.bind(self))
-  self._coloredWallet.on('newAsset', self._addAssetModel.bind(self))
+  walletEngine.getWallet().getAllAssetDefinitions().forEach(self._addAssetModel.bind(self))
+  walletEngine.getWallet().on('newAsset', self._addAssetModel.bind(self))
 }
 
 util.inherits(AssetModels, events.EventEmitter)
@@ -46,7 +44,7 @@ AssetModels.prototype._addAssetModel = function (assetdef) {
   var assetId = assetdef.getId()
   if (!_.isUndefined(self._models[assetId])) { return }
 
-  var assetModel = new AssetModel(self._wallet, assetdef)
+  var assetModel = new AssetModel(self._walletEngine, assetdef)
   assetModel.on('error', function (error) { self.emit('error', error) })
   assetModel.on('update', function () { self.emit('update') })
 

@@ -57,7 +57,7 @@ CWPPPaymentModel.prototype.initialize = function (cb) {
 
     self.recipients = [{
       address: self.payreq.address,
-      amount: self.assetModel.assetdef.formatValue(self.payreq.value)
+      amount: self.assetModel.getAssetDefinition().formatValue(self.payreq.value)
     }]
     self.state = 'fresh'
 
@@ -88,11 +88,11 @@ CWPPPaymentModel.prototype.addRecipient = function() {
 CWPPPaymentModel.prototype.selectCoins = function(cb) {
   var self = this
 
-  var assetdef = self.assetModel.assetdef
+  var assetdef = self.assetModel.getAssetDefinition()
   var colordef = assetdef.getColorSet().getColorDefinitions()[0]
   var neededColorValue = new cclib.ColorValue(colordef, self.payreq.value)
 
-  var opTx = new OperationalTx(self.walletEngine.ccWallet)
+  var opTx = new OperationalTx(self.walletEngine.getWallet())
   opTx.selectCoins(neededColorValue, null, function(error, coins, colorValue) {
     if (error)
       return cb(error)
@@ -119,27 +119,24 @@ CWPPPaymentModel.prototype.selectCoins = function(cb) {
 /**
  * @param {CWPPPaymentModel~send} cb
  */
-CWPPPaymentModel.prototype.send = function(cb) {
+CWPPPaymentModel.prototype.send = function (cb) {
   var self = this
 
-  if (this.readOnly)
-    return cb(new Error('Payment has already been comitted'))
+  function createError(msg) {
+    process.nextTick(function () { cb(new Error(msg)) })
+  }
 
-  if (this.state !== 'fresh')
-    return cb(new Error('Payment was not properly initialized'))
-
-  if (this.recipients.length === 0)
-    return cb(new Error('Recipients list is empty'))
-
-  if (this.seed === null)
-    return cb(new Error('Mnemonic not set'))
+  if (this.readOnly) { return createError('Payment has already been comitted') }
+  if (this.state !== 'fresh') { return createError('Payment was not properly initialized') }
+  if (this.recipients.length === 0) { return createError('Recipients list is empty') }
+  if (this.seed === null) { return createError('Mnemonic not set') }
 
   this.readOnly = true
   this.status = 'sending'
 
   function fail(error) {
     self.status = 'failed'
-    cb(error)
+    process.nextTick(function () { cb(error) })
   }
 
   var processURL= cwpp.processURL(this.paymentURI)
@@ -149,34 +146,32 @@ CWPPPaymentModel.prototype.send = function(cb) {
       uri: processURL,
       body: JSON.stringify(message)
     }
-    request(requestOpts, function(error, response, body) {
-      if (error)
-        return fail(error)
+    request(requestOpts, function (error, response, body) {
+      if (error) { return fail(error) }
 
-      if (response.statusCode !== 200)
+      if (response.statusCode !== 200) {
         return fail(new Error('request failed'))
+      }
 
-      prcb(JSON.parse(body))
+      process.nextTick(function () { prcb(JSON.parse(body)) })
     })
   }
 
-  var wallet = this.walletEngine.ccWallet;
-  this.selectCoins(function(error, cinputs, change, colordef) {
-    if (error)
-      return fail(error)
+  var wallet = this.walletEngine.getWallet()
+  this.selectCoins(function (error, cinputs, change, colordef) {
+    if (error) { return fail(error) }
 
     var msg = cwpp.make_cinputs_proc_req_1(colordef.getDesc(), cinputs, change)
-    cwppProcess(msg, function(resp) {
+    cwppProcess(msg, function (resp) {
       var rawTx = RawTx.fromHex(resp.tx_data)
       // TODO: check before signing tx!
-      wallet.transformTx(rawTx, 'partially-signed', self.seed, function(error, tx) {
-        if (error)
-          return fail(error)
+      wallet.transformTx(rawTx, 'partially-signed', self.seed, function (error, tx) {
+        if (error) { return fail(error) }
 
         msg = cwpp.make_cinputs_proc_req_2(tx.toHex(true))
-        cwppProcess(msg, function(resp) {
-            var rawTx = RawTx.fromHex(resp.tx_data);
-            wallet.sendTx(rawTx.toTransaction(), cb);
+        cwppProcess(msg, function (resp) {
+          var rawTx = RawTx.fromHex(resp.tx_data);
+          wallet.sendTx(rawTx.toTransaction(), cb);
         })
       })
     })

@@ -37,7 +37,7 @@ PaymentModel.prototype.getAssetModel = function() {
  * @return {string}
  */
 PaymentModel.prototype.getTotalAmount = function() {
-  var assetdef = this.getAssetModel().assetdef
+  var assetdef = this.getAssetModel().getAssetDefinition()
 
   var amount = this.getRecipients().reduce(function(sum, recipient) {
     return sum + assetdef.parseValue(recipient.amount)
@@ -59,8 +59,8 @@ PaymentModel.prototype.getRecipients = function() {
  * @return {boolean}
  */
 PaymentModel.prototype.checkAddress = function(address) {
-  var assetdef = this.assetModel.assetdef
-  return this.assetModel.wallet.checkAddress(assetdef, address)
+  var assetdef = this.assetModel.getAssetDefinition()
+  return this.assetModel.getWallet().checkAddress(assetdef, address)
 }
 
 /**
@@ -68,7 +68,7 @@ PaymentModel.prototype.checkAddress = function(address) {
  * @return {boolean}
  */
 PaymentModel.prototype.checkAmount = function(amount) {
-  var assetdef = this.assetModel.assetdef
+  var assetdef = this.assetModel.getAssetDefinition()
 
   var amountAvailable = assetdef.parseValue(this.assetModel.getAvailableBalance())
   var amountNeeded = assetdef.parseValue(amount)
@@ -112,11 +112,11 @@ PaymentModel.prototype.send = function(cb) {
   if (self.seed === null)
     throw new Error('Mnemonic not set')
 
-  var assetdef = self.assetModel.assetdef
+  var assetdef = self.assetModel.getAssetDefinition()
 
   var rawTargets = self.getRecipients().map(function(recipient) {
     return {
-      address: self.assetModel.wallet.getBitcoinAddress(assetdef, recipient.address),
+      address: self.assetModel.getWallet().getBitcoinAddress(assetdef, recipient.address),
       value: assetdef.parseValue(recipient.amount)
     }
   })
@@ -125,23 +125,23 @@ PaymentModel.prototype.send = function(cb) {
   self.status = 'sending'
 
   var txId
-  var wallet = self.assetModel.wallet
-  Q.ninvoke(wallet, 'createTx', self.assetModel.assetdef, rawTargets).then(function(tx) {
+  var wallet = self.assetModel.getWallet()
+  Q.ninvoke(wallet, 'createTx', self.assetModel.getAssetDefinition(), rawTargets).then(function(tx) {
     return Q.ninvoke(wallet, 'transformTx', tx, 'signed', self.seed)
 
   }).then(function(tx) {
     txId = tx.getId()
     return Q.ninvoke(wallet, 'sendTx', tx)
 
-  }).catch(function(error) {
-    self.status = 'failed'
-    cb(error)
-
-  }).then(function() {
+  }).done(function () {
     self.status = 'send'
     cb(null, txId)
 
-  }).finally(function() { self.assetModel.update() }).done()
+  }, function (error) {
+    self.status = 'failed'
+    cb(error)
+
+  })
 }
 
 // 'fresh', 'sending', 'sent', 'failed'

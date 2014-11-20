@@ -11,7 +11,7 @@ describe('AssetModel', function () {
   beforeEach(function () {
     localStorage.clear()
     walletEngine = new WalletEngine({testnet: true, blockchain: 'NaiveBlockchain'})
-    walletEngine.getColoredWallet().initialize('12355564466111166655222222222222')
+    walletEngine.getWallet().initialize('12355564466111166655222222222222')
     walletEngine._initializeWalletEngine()
     walletEngine.on('error', function (error) { throw error })
   })
@@ -23,7 +23,7 @@ describe('AssetModel', function () {
   })
 
   it('bitcoin AssetModel', function (done) {
-    var assetdef = walletEngine.getColoredWallet().getAssetDefinitionByMoniker('bitcoin')
+    var assetdef = walletEngine.getWallet().getAssetDefinitionByMoniker('bitcoin')
     var assetModel = new AssetModel(walletEngine, assetdef)
     assetModel.on('error', function (error) { throw error })
 

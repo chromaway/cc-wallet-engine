@@ -20,10 +20,10 @@ HistoryEntryModel.prototype.getTxId = function() {
 /**
  * @return {string}
  */
-HistoryEntryModel.prototype.getDate = function() {
+HistoryEntryModel.prototype.getDate = function () {
   var timestamp = this.historyEntry.getTimestamp()
-  if (!timestamp)
-    return 'unconfirmed'
+  //Now all historyEntry have timestamp, even unconfirmed
+  //if (!timestamp) { return 'unconfirmed' }
 
   var timezoneOffset = new Date().getTimezoneOffset() * 60
   var date = timestamp - timezoneOffset
@@ -33,8 +33,8 @@ HistoryEntryModel.prototype.getDate = function() {
 /**
  * @return {string[]}
  */
-HistoryEntryModel.prototype.getValues = function() {
-  var values = this.historyEntry.getValues().map(function(av) {
+HistoryEntryModel.prototype.getValues = function () {
+  var values = this.historyEntry.getValues().map(function (av) {
     return av.getAsset().formatValue(av.getValue())
   })
 

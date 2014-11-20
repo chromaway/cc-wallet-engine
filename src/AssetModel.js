@@ -20,15 +20,15 @@ var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
 /**
  * @class AssetModel
  * @extends events.EventEmitter
- * @param {WalletEngine} wallet
+ * @param {WalletEngine} walletEngine
  * @param {cc-wallet-core.asset.AssetDefinition} assetdef
  */
-function AssetModel(wallet, assetdef) {
+function AssetModel(walletEngine, assetdef) {
   var self = this
   events.EventEmitter.call(self)
 
-  self._coloredWallet = wallet.getColoredWallet()
-  self._wallet = wallet
+  self._wallet = walletEngine.getWallet()
+  self._walletEngine = walletEngine
   self._assetdef = assetdef
 
   self.props = {
@@ -40,9 +40,9 @@ function AssetModel(wallet, assetdef) {
     historyEntries: []
   }
 
-  self._coloredWallet.on('newHeight', self._update.bind(self))
-  self._coloredWallet.on('updateTx', self._update.bind(self))
-  self._coloredWallet.on('touchAsset', function (assetdef) {
+  self._wallet.on('newHeight', self._update.bind(self))
+  self._wallet.on('updateTx', self._update.bind(self))
+  self._wallet.on('touchAsset', function (assetdef) {
     if (self._assetdef.getId() === assetdef.getId()) { self._update() }
   })
 
@@ -64,13 +64,13 @@ AssetModel.prototype._update = function () {
   }
 
   var isBitcoin = (self._assetdef.getId() === 'JNu4AFCBNmTE1')
-  var address = self._coloredWallet.getSomeAddress(self._assetdef, !isBitcoin)
+  var address = self._wallet.getSomeAddress(self._assetdef, !isBitcoin)
   if (self.props.address !== address) {
     self.props.address = address
     self.emit('update')
   }
 
-  self._coloredWallet.getBalance(self._assetdef, function (error, balance) {
+  self._wallet.getBalance(self._assetdef, function (error, balance) {
     if (error !== null) { return self.emit('error', error) }
 
     var isChanged = false
@@ -89,7 +89,7 @@ AssetModel.prototype._update = function () {
     if (isChanged) { self.emit('update') }
   })
 
-  self._coloredWallet.getHistory(self._assetdef, function (error, entries) {
+  self._wallet.getHistory(self._assetdef, function (error, entries) {
     if (error !== null) { return self.emit('error', error) }
 
     function entryEqualFn(entry, index) { return entry.getTxId() === entries[index].getTxId() }
@@ -102,6 +102,20 @@ AssetModel.prototype._update = function () {
 
     self.emit('update')
   })
+}
+
+/**
+ * @return {cc-wallet-core.Wallet}
+ */
+AssetModel.prototype.getWallet = function () {
+  return this._wallet
+}
+
+/**
+ * @return {cc-wallet-core.asset.AssetDefinition}
+ */
+AssetModel.prototype.getAssetDefinition = function () {
+  return this._assetdef
 }
 
 /**
@@ -150,14 +164,14 @@ AssetModel.prototype.getHistory = function () {
  * @return {PaymentModel}
  */
 AssetModel.prototype.makePayment = function () {
-  return new PaymentModel(this, this._wallet.getSeed())
+  return new PaymentModel(this, this._walletEngine.getSeed())
 }
 
 /**
  * @return {PaymentRequestModel}
  */
 AssetModel.prototype.makePaymentRequest = function (props) {
-  return new PaymentRequestModel(this._coloredWallet, this._assetdef, props)
+  return new PaymentRequestModel(this._wallet, this._assetdef, props)
 }
 
 /**

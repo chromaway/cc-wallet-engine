@@ -21,7 +21,7 @@ describe('HistoryEntryModel', function () {
     wallet.subscribeAndSyncAllAddresses(function (error) {
       expect(error).to.be.null
 
-      var assetModels = new AssetModels({getColoredWallet: function () { return wallet }})
+      var assetModels = new AssetModels({getWallet: function () { return wallet }})
       assetModels.on('error', function (error) { throw error })
 
       var deferred = Q.defer()

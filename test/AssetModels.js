@@ -16,7 +16,7 @@ describe('AssetModels', function () {
     wallet = new ccWallet({testnet: true, blockchain: 'NaiveBlockchain'})
     wallet.on('error', function (error) { throw error })
     wallet.initialize('12355564466111166655222222222222')
-    assetModels = new AssetModels({getColoredWallet: function () { return wallet }})
+    assetModels = new AssetModels({getWallet: function () { return wallet }})
   })
 
   afterEach(function () {

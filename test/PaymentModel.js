@@ -6,35 +6,39 @@ var WalletEngine = require('../src/WalletEngine')
 var AssetModel = require('../src/AssetModel')
 
 
-describe.skip('PaymentModel', function() {
+describe('PaymentModel', function() {
   var mnemonic = 'aerobic naive paper isolate volume coffee minimum crucial purse inmate winner cricket'
   var password = ''
   var seed = BIP39.mnemonicToSeedHex(mnemonic, password)
 
-  var assetModel, paymentModel, walletEngine
+  var walletEngine
+  var paymentModel
 
   beforeEach(function(done) {
     localStorage.clear()
-    walletEngine = new WalletEngine({ testnet: true, blockchain: 'NaiveBlockchain' })
-    walletEngine.ccWallet.initialize(seed)
-    walletEngine.ccWallet.subscribeAndSyncAllAddresses(function(error) { // subscribeAndSyncAll
+    walletEngine = new WalletEngine({testnet: true, blockchain: 'NaiveBlockchain'})
+    walletEngine.getWallet().initialize(seed)
+    walletEngine.getWallet().subscribeAndSyncAllAddresses(function(error) {
       expect(error).to.be.null
 
+      var assetdef = walletEngine.getWallet().getAssetDefinitionByMoniker('bitcoin')
+      var assetModel = new AssetModel(walletEngine, assetdef)
+      assetModel.on('error', function (error) { throw error })
+
       var cnt = 0
-      var assetdef = walletEngine.ccWallet.getAssetDefinitionByMoniker('bitcoin')
-      assetModel = new AssetModel(walletEngine, walletEngine.ccWallet, assetdef)
-      assetModel.on('update', function() {
-        if (++cnt === 6) {
+      assetModel.on('update', function () {
+        if (++cnt === 2) {
           paymentModel = assetModel.makePayment()
           done()
         }
       })
-      assetModel.update()
     })
   })
 
   afterEach(function() {
-    walletEngine.ccWallet.clearStorage()
+    paymentModel = undefined
+    walletEngine.removeListeners()
+    walletEngine.clearStorage()
     walletEngine = undefined
   })
 
@@ -58,25 +62,6 @@ describe.skip('PaymentModel', function() {
     expect(isValid).to.be.false
   })
 
-  it('checkMnemonic return true', function() {
-    expect(paymentModel.checkMnemonic(mnemonic, password)).to.be.true
-  })
-
-  it('checkMnemonic return false', function() {
-    expect(paymentModel.checkMnemonic(mnemonic, password+'0')).to.be.false
-  })
-
-  it('setMnemonic not throw error', function() {
-    var fn = function() { paymentModel.setMnemonic(mnemonic, password) }
-    expect(fn).to.not.throw(Error)
-  })
-
-  it('setMnemonic throw error', function() {
-    paymentModel.readOnly = true
-    var fn = function() { paymentModel.setMnemonic(mnemonic, password) }
-    expect(fn).to.throw(Error)
-  })
-
   it('addRecipient not throw error', function() {
     var fn = function() { paymentModel.addRecipient('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5WgW', '0.01') }
     expect(fn).to.not.throw(Error)
@@ -93,7 +78,7 @@ describe.skip('PaymentModel', function() {
     paymentModel.setSeed(seed)
     paymentModel.send(function(error, txId) {
       expect(error).to.be.null
-      expect(txId).to.be.an('string')
+      expect(txId).to.be.an('string').with.to.have.length(64)
       done()
     })
   })
@@ -112,7 +97,6 @@ describe.skip('PaymentModel', function() {
     expect(paymentModel.send).to.throw(Error)
   })
 
-  // Todo: check other status
   it('getStatus return fresh', function() {
     expect(paymentModel.getStatus()).to.equal('fresh')
   })
