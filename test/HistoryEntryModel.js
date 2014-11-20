@@ -1,5 +1,6 @@
 var expect = require('chai').expect
 
+var Q = require('q')
 var ccWallet = require('cc-wallet-core').Wallet
 var moment = require('moment')
 
@@ -8,39 +9,47 @@ var AssetModel = require('../src/AssetModel')
 var HistoryEntryModel = require('../src/HistoryEntryModel')
 
 
-describe('HistoryEntryModel', function() {
-  var wallet, assetModels, assetModel, historyEntry
+describe('HistoryEntryModel', function () {
+  var wallet
+  var historyEntry
 
-  beforeEach(function(done) {
+  beforeEach(function (done) {
     localStorage.clear()
     wallet = new ccWallet({ testnet: true, blockchain: 'NaiveBlockchain' })
+    wallet.on('error', function (error) { throw error })
     wallet.initialize('12355564466111166655222222222222')
-    wallet.subscribeAndSyncAllAddresses(function(error) {
+    wallet.subscribeAndSyncAllAddresses(function (error) {
       expect(error).to.be.null
 
-      assetModels = new AssetModels(wallet)
-      var cnt = 0
+      var assetModels = new AssetModels({getColoredWallet: function () { return wallet }})
+      assetModels.on('error', function (error) { throw error })
+
+      var deferred = Q.defer()
+      deferred.promise.then(done)
+
       assetModels.on('update', function() {
-        if (++cnt !== 5)
-          return
+        var models = assetModels.getAssetModels()
+        if (models.length === 0) { return }
 
-        expect(assetModels.getAssetModels()).to.have.length(1)
-        expect(assetModels.getAssetModels()[0]).to.be.instanceof(AssetModel)
-        assetModel = assetModels.getAssetModels()[0]
+        expect(models).to.be.instanceof(Array).with.to.have.length(1)
+        expect(models[0]).to.be.instanceof(AssetModel)
 
-        expect(assetModel.getHistory()).to.be.instanceof(Array).with.to.have.length(1)
-        expect(assetModel.getHistory()[0]).to.be.instanceof(HistoryEntryModel)
-        historyEntry = assetModel.getHistory()[0]
+        var entries = models[0].getHistory()
+        if (entries.length === 0) { return }
 
-        done()
+        expect(entries).to.be.instanceof(Array).with.to.have.length(1)
+        expect(entries[0]).to.be.instanceof(HistoryEntryModel)
+
+        historyEntry = entries[0]
+        deferred.resolve()
       })
-      assetModels.update()
     })
   })
 
   afterEach(function() {
-    localStorage.clear()
-    //wallet.clearStorage()
+    historyEntry = undefined
+    wallet.removeListeners()
+    wallet.clearStorage()
     wallet = undefined
   })
 

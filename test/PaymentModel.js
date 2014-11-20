@@ -34,8 +34,7 @@ describe.skip('PaymentModel', function() {
   })
 
   afterEach(function() {
-    localStorage.clear()
-    //walletEngine.ccWallet.clearStorage()
+    walletEngine.ccWallet.clearStorage()
     walletEngine = undefined
   })
 
