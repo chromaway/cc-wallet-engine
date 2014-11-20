@@ -1,7 +1,7 @@
 var util = require('util')
 var Set = require('set')
-var make_random_id = require('./utils').make_random_id
-var HTTPInterface = require('./utils').HTTPInterface
+var make_random_id = require('./Utils').make_random_id
+var HTTPInterface = require('./Utils').HTTPInterface
 
 
 /**

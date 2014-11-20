@@ -5,22 +5,22 @@ var sinon = require('sinon') // use sinon to test ajax, see http://sinonjs.org/
 /**
  * Test P2PTrade utils
  */
-describe('P2PTrade utils', function(){
+describe.skip('P2PTrade utils', function(){
 
   /**
    * Test make_random_id
    */
-  describe('make_random_id', function(){
+  describe.skip('make_random_id', function(){
 
-    it('is random', function(){
+    it.skip('is random', function(){
       // TODO test it
     })
 
-    it('8 bytes of entropy', function(){
+    it.skip('8 bytes of entropy', function(){
       // TODO test it
     })
 
-    it('is hex str', function(){
+    it.skip('is hex str', function(){
       // TODO test it
     })
 
@@ -29,13 +29,13 @@ describe('P2PTrade utils', function(){
   /**
    * Test HTTPInterface
    */
-  describe('HTTPInterface', function(){
+  describe.skip('HTTPInterface', function(){
 
-    it('poll', function(){
+    it.skip('poll', function(){
       // TODO test it
     })
 
-    it('post', function(){
+    it.skip('post', function(){
       // TODO test it
     })
 

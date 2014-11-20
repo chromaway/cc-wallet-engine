@@ -1,5 +1,5 @@
 var util = require('util')
-var make_random_id = require('./utils').make_random_id
+var make_random_id = require('./Utils').make_random_id
 var equal = require('deep-equal');
 
 
