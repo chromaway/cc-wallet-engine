@@ -36,12 +36,18 @@ OperationalETxSpec.prototype.prepare_targets = function(etx_spec, their){
   throw new Error("Not implemented!")
 }
 
-OperationalETxSpec.prototype.select_uncolored_coins = function(colorvalue, use_fee_estimator){
+OperationalETxSpec.prototype.select_uncolored_coins = function(
+    colorvalue, use_fee_estimator
+  ){
+
   // TODO implement
   throw new Error("Not implemented!")
 }
 
-EAgent.prototype.select_coins = function(colorvalue, use_fee_estimator=None){
+OperationalETxSpec.prototype.select_coins = function(
+    colorvalue, use_fee_estimator
+  ){
+
   // TODO implement
   throw new Error("Not implemented!")
 }
@@ -51,9 +57,8 @@ EAgent.prototype.select_coins = function(colorvalue, use_fee_estimator=None){
 /**
  * @class EWalletController
  */
-function EWalletController(model, wctrl){
-  this.model = model
-  this.wctrl = wctrl
+function EWalletController(wallet){
+  this.wallet = wallet
 }
 
 EWalletController.prototype.publish_tx = function(raw_tx, my_offer){
