@@ -10,7 +10,12 @@ describe('AssetModel', function () {
 
   beforeEach(function () {
     localStorage.clear()
-    walletEngine = new WalletEngine({testnet: true, blockchain: 'NaiveBlockchain'})
+    walletEngine = new WalletEngine({
+      testnet: true,
+      blockchain: 'NaiveBlockchain',
+      storageSaveTimeout: 0,
+      spendUnconfirmedCoins: true
+    })
     walletEngine.getWallet().initialize('12355564466111166655222222222222')
     walletEngine._initializeWalletEngine()
     walletEngine.on('error', function (error) { throw error })
@@ -29,8 +34,7 @@ describe('AssetModel', function () {
 
     var cnt = 0
     assetModel.on('update', function () {
-      if (++cnt !== 3)
-        return
+      if (++cnt !== 3) { return }
 
       expect(assetModel.getMoniker()).to.equal('bitcoin')
       expect(assetModel.getAddress()).to.equal('mv4jLE114t8KHL3LExNGBTXiP2dCjkaWJh')

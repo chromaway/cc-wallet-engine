@@ -1,10 +1,11 @@
 var events = require('events')
 var util = require('util')
 
+var _ = require('lodash')
+
 var HistoryEntryModel = require('./HistoryEntryModel')
 var PaymentModel = require('./PaymentModel')
 var PaymentRequestModel = require('./PaymentRequestModel')
-
 var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
 
 
@@ -96,7 +97,7 @@ AssetModel.prototype._update = function () {
     var isEqual = self.props.historyEntries.length === entries.length && self.props.historyEntries.every(entryEqualFn)
     if (isEqual) { return }
 
-    self.props.historyEntries = entries.map(function (entry) { 
+    self.props.historyEntries = entries.map(function (entry) {
       return new HistoryEntryModel(entry)
     }).reverse()
 
@@ -175,27 +176,38 @@ AssetModel.prototype.makePaymentRequest = function (props) {
 }
 
 /**
+ * @callback AssetModel~makePaymentFromURI
+ * @param {?Error} error
+ * @param {PaymentModel} paymentModel
+ */
+
+/**
  * @param {string} uri
+ * @param {AssetModel~makePaymentFromURI} cb
+
  * @return {PaymentModel}
  * @throws {Error}
  */
-AssetModel.prototype.makePaymentFromURI = function (uri) {
+AssetModel.prototype.makePaymentFromURI = function (uri, cb) {
   var params = decode_bitcoin_uri(uri)
-  if (!params || !params.address)
-    throw new Error('wrong payment URI')
+  if (params === null || _.isUndefined(params.address)) {
+    return cb(new Error('wrong payment URI'))
+  }
 
   // by default assetId for bitcoin
-  var assetId = params.asset_id || 'JNu4AFCBNmTE1'
-  if (assetId !== this._assetdef.getId())
-    throw new Error('wrong payment URI (wrong asset)')
+  var assetId = _.isUndefined(params.asset_id) ? 'JNu4AFCBNmTE1' : params.asset_id
+  if (assetId !== this._assetdef.getId()) {
+    return cb(new Error('wrong payment URI (wrong asset)'))
+  }
 
   var colorAddress = params.address
-  if (assetId !== 'JNu4AFCBNmTE1')
+  if (assetId !== 'JNu4AFCBNmTE1') {
     colorAddress = assetId + '@' + colorAddress
+  }
 
   var payment = this.makePayment()
   payment.addRecipient(colorAddress, params.amount)
-  return payment
+  cb(null, payment)
 }
 
 

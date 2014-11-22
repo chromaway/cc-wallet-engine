@@ -6,7 +6,7 @@ var WalletEngine = require('../src/WalletEngine')
 var AssetModel = require('../src/AssetModel')
 
 
-describe('PaymentModel', function() {
+describe('PaymentModel', function () {
   var mnemonic = 'aerobic naive paper isolate volume coffee minimum crucial purse inmate winner cricket'
   var password = ''
   var seed = BIP39.mnemonicToSeedHex(mnemonic, password)
@@ -14,11 +14,16 @@ describe('PaymentModel', function() {
   var walletEngine
   var paymentModel
 
-  beforeEach(function(done) {
+  beforeEach(function (done) {
     localStorage.clear()
-    walletEngine = new WalletEngine({testnet: true, blockchain: 'NaiveBlockchain'})
+    walletEngine = new WalletEngine({
+      testnet: true,
+      blockchain: 'NaiveBlockchain',
+      storageSaveTimeout: 0,
+      spendUnconfirmedCoins: true
+    })
     walletEngine.getWallet().initialize(seed)
-    walletEngine.getWallet().subscribeAndSyncAllAddresses(function(error) {
+    walletEngine.getWallet().subscribeAndSyncAllAddresses(function (error) {
       expect(error).to.be.null
 
       var assetdef = walletEngine.getWallet().getAssetDefinitionByMoniker('bitcoin')
@@ -35,69 +40,68 @@ describe('PaymentModel', function() {
     })
   })
 
-  afterEach(function() {
+  afterEach(function () {
     paymentModel = undefined
     walletEngine.removeListeners()
     walletEngine.clearStorage()
     walletEngine = undefined
   })
 
-  it('checkAddress return true', function() {
+  it('checkAddress return true', function () {
     var isValid = paymentModel.checkAddress('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5WgW')
     expect(isValid).to.be.true
   })
 
-  it('checkAddress return false', function() {
+  it('checkAddress return false', function () {
     var isValid = paymentModel.checkAddress('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5Wg')
     expect(isValid).to.be.false
   })
 
-  it('checkAmount return true', function() {
+  it('checkAmount return true', function () {
     var isValid = paymentModel.checkAmount('0.001')
     expect(isValid).to.be.true
   })
 
-  it('checkAmount return false', function() {
+  it('checkAmount return false', function () {
     var isValid = paymentModel.checkAmount('1')
     expect(isValid).to.be.false
   })
 
-  it('addRecipient not throw error', function() {
-    var fn = function() { paymentModel.addRecipient('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5WgW', '0.01') }
+  it('addRecipient not throw error', function () {
+    var fn = function () { paymentModel.addRecipient('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5WgW', '0.01') }
     expect(fn).to.not.throw(Error)
   })
 
-  it('addRecipient throw error', function() {
+  it('addRecipient throw error', function () {
     paymentModel.readOnly = true
-    var fn = function() { paymentModel.addRecipient('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5WgW', '0.01') }
+    var fn = function () { paymentModel.addRecipient('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5WgW', '0.01') }
     expect(fn).to.throw(Error)
   })
 
-  it('send return txId', function(done) {
+  it('send', function (done) {
     paymentModel.addRecipient('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5WgW', '0.001')
     paymentModel.setSeed(seed)
-    paymentModel.send(function(error, txId) {
+    paymentModel.send(function (error) {
       expect(error).to.be.null
-      expect(txId).to.be.an('string').with.to.have.length(64)
       done()
     })
   })
 
-  it('send throw error (payment already sent)', function() {
+  it('send throw error (payment already sent)', function () {
     paymentModel.readOnly = true
     expect(paymentModel.send).to.throw(Error)
   })
 
-  it('send throw error (recipient is empty)', function() {
+  it('send throw error (recipient is empty)', function () {
     expect(paymentModel.send).to.throw(Error)
   })
 
-  it('send throw error (mnemonic not set)', function() {
+  it('send throw error (mnemonic not set)', function () {
     paymentModel.addRecipient('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5WgW', '0.01')
     expect(paymentModel.send).to.throw(Error)
   })
 
-  it('getStatus return fresh', function() {
+  it('getStatus return fresh', function () {
     expect(paymentModel.getStatus()).to.equal('fresh')
   })
 })

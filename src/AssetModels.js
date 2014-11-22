@@ -36,7 +36,7 @@ function AssetModels(walletEngine) {
 util.inherits(AssetModels, events.EventEmitter)
 
 /**
- * @param {AssetDefinition}
+ * @param {AssetDefinition} assetdef
  */
 AssetModels.prototype._addAssetModel = function (assetdef) {
   var self = this
@@ -66,11 +66,10 @@ AssetModels.prototype.getAssetModels = function () {
  */
 AssetModels.prototype.getAssetForURI = function (uri) {
   var params = decode_bitcoin_uri(uri)
-  if (!params || !params.address)
-    return null
+  if (params === null || _.isUndefined(params.address)) { return null }
 
   // by default assetId for bitcoin
-  var assetId = params.asset_id || 'JNu4AFCBNmTE1'
+  var assetId = _.isUndefined(params.asset_id) ? 'JNu4AFCBNmTE1' : params.asset_id
   return this._models[assetId] || null
 }
 

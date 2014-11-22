@@ -15,7 +15,12 @@ describe('HistoryEntryModel', function () {
 
   beforeEach(function (done) {
     localStorage.clear()
-    wallet = new ccWallet({ testnet: true, blockchain: 'NaiveBlockchain' })
+    wallet = new ccWallet({
+      testnet: true,
+      blockchain: 'NaiveBlockchain',
+      storageSaveTimeout: 0,
+      spendUnconfirmedCoins: true
+    })
     wallet.on('error', function (error) { throw error })
     wallet.initialize('12355564466111166655222222222222')
     wallet.subscribeAndSyncAllAddresses(function (error) {
@@ -27,7 +32,7 @@ describe('HistoryEntryModel', function () {
       var deferred = Q.defer()
       deferred.promise.then(done)
 
-      assetModels.on('update', function() {
+      assetModels.on('update', function () {
         var models = assetModels.getAssetModels()
         if (models.length === 0) { return }
 
@@ -46,28 +51,28 @@ describe('HistoryEntryModel', function () {
     })
   })
 
-  afterEach(function() {
+  afterEach(function () {
     historyEntry = undefined
     wallet.removeListeners()
     wallet.clearStorage()
     wallet = undefined
   })
 
-  it('getTxId', function() {
+  it('getTxId', function () {
     expect(historyEntry.getTxId()).to.equal('51e8dfe12367d3a0e9a9c8c558c774b98330561a12a8e3fdc805f6e6d25dc7db')
   })
 
-  it('getDate', function() {
+  it('getDate', function () {
     var date = moment(historyEntry.getDate(), 'MM/DD/YY HH:mm:ss')
     date = date.unix() + new Date().getTimezoneOffset() * 60
     expect(date).to.equal(1408465527)
   })
 
-  it('getValues', function() {
-    expect(historyEntry.getValues()).to.deep.equal([ '0.01000000' ])
+  it('getValues', function () {
+    expect(historyEntry.getValues()).to.deep.equal(['0.01000000'])
   })
 
-  it('getTargets', function() {
+  it('getTargets', function () {
     var models = historyEntry.getTargets()
     expect(models).to.be.instanceof(Array).with.length(1)
     expect(models[0].getAddress()).to.equal('mv4jLE114t8KHL3LExNGBTXiP2dCjkaWJh')
@@ -75,19 +80,19 @@ describe('HistoryEntryModel', function () {
     expect(models[0].getFormattedValue()).to.equal('0.01000000')
   })
 
-  it('isSend', function() {
+  it('isSend', function () {
     expect(historyEntry.isSend()).to.be.false
   })
 
-  it('isReceive', function() {
+  it('isReceive', function () {
     expect(historyEntry.isReceive()).to.be.true
   })
 
-  it('isPaymentToYourself', function() {
+  it('isPaymentToYourself', function () {
     expect(historyEntry.isPaymentToYourself()).to.be.false
   })
 
-  it('getTransactionType', function() {
+  it('getTransactionType', function () {
     expect(historyEntry.getTransactionType()).to.equal('Receive')
   })
 })
