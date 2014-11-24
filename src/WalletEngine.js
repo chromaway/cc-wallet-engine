@@ -257,6 +257,17 @@ WalletEngine.prototype.getAssetModels = function () {
   return this._assetModels.getAssetModels()
 }
 
+/*
+ * @param {string} assetId
+ * @return {AssetModel}
+ */
+WalletEngine.prototype.getAssetModelById = function (assetId) {
+  if (!this._wallet.isInitialized())
+    throw new Error('not initialized')
+
+  return this._assetModels.getAssetById(assetId)
+}
+
 /**
  */
 WalletEngine.prototype.getHistory = function () {

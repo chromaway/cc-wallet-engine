@@ -75,6 +75,14 @@ AssetModels.prototype.getAssetForURI = function (uri) {
 }
 
 /**
+ * @param {string} assetId
+ * @return {?AssetModel}
+ */
+AssetModels.prototype.getAssetById = function (assetId) {
+  return this._models[assetId] || null
+}
+
+/**
  */
 AssetModels.prototype.removeListeners = function () {
   this.removeAllListeners()

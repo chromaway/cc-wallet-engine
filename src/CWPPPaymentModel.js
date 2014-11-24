@@ -51,7 +51,7 @@ CWPPPaymentModel.prototype.initialize = function (cb) {
     self.payreq = JSON.parse(body)
 
     var assetId = self.payreq.assetId
-    self.assetModel = self.walletEngine.assetModels.models[assetId]
+    self.assetModel = self.walletEngine.getAssetModelById(assetId)
     if (!self.assetModel)
       return cb(new Error('asset not found'))
 
