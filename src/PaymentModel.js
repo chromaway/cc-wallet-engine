@@ -22,24 +22,24 @@ function PaymentModel(assetModel, seed) {
 /**
  * @param {string} seed
  */
-PaymentModel.prototype.setSeed = function(seed) {
+PaymentModel.prototype.setSeed = function (seed) {
   this.seed = seed
 }
 
 /**
  * @return {AssetModel}
  */
-PaymentModel.prototype.getAssetModel = function() {
+PaymentModel.prototype.getAssetModel = function () {
   return this.assetModel
 }
 
 /**
  * @return {string}
  */
-PaymentModel.prototype.getTotalAmount = function() {
+PaymentModel.prototype.getTotalAmount = function () {
   var assetdef = this.getAssetModel().getAssetDefinition()
 
-  var amount = this.getRecipients().reduce(function(sum, recipient) {
+  var amount = this.getRecipients().reduce(function (sum, recipient) {
     return sum + assetdef.parseValue(recipient.amount)
   }, 0)
 
@@ -49,7 +49,7 @@ PaymentModel.prototype.getTotalAmount = function() {
 /**
  * @return {RecipientObject[]}
  */
-PaymentModel.prototype.getRecipients = function() {
+PaymentModel.prototype.getRecipients = function () {
   return this.recipients
 }
 
@@ -58,7 +58,7 @@ PaymentModel.prototype.getRecipients = function() {
  * @param {string} address
  * @return {boolean}
  */
-PaymentModel.prototype.checkAddress = function(address) {
+PaymentModel.prototype.checkAddress = function (address) {
   var assetdef = this.assetModel.getAssetDefinition()
   return this.assetModel.getWallet().checkAddress(assetdef, address)
 }
@@ -67,7 +67,7 @@ PaymentModel.prototype.checkAddress = function(address) {
  * @param {string} amount
  * @return {boolean}
  */
-PaymentModel.prototype.checkAmount = function(amount) {
+PaymentModel.prototype.checkAmount = function (amount) {
   var assetdef = this.assetModel.getAssetDefinition()
 
   var amountAvailable = assetdef.parseValue(this.assetModel.getAvailableBalance())
@@ -82,11 +82,12 @@ PaymentModel.prototype.checkAmount = function(amount) {
  * @return {PaymentModel}
  * @throws {Error} If payment already sent
  */
-PaymentModel.prototype.addRecipient = function(address, amount) {
-  if (this.readOnly)
+PaymentModel.prototype.addRecipient = function (address, amount) {
+  if (this.readOnly) {
     throw new Error('payment has already been comitted')
+  }
 
-  this.recipients.push({ address: address, amount: amount })
+  this.recipients.push({address: address, amount: amount})
 
   return this
 }
@@ -101,20 +102,16 @@ PaymentModel.prototype.addRecipient = function(address, amount) {
  * @return {PaymentModel}
  * @throws {Error} If payment already sent, recipients list not filled or mnemonic not set
  */
-PaymentModel.prototype.send = function(cb) {
+PaymentModel.prototype.send = function (cb) {
   var self = this
-  if (self.readOnly)
-    throw new Error('Payment has already been comitted')
 
-  if (self.recipients.length === 0)
-    throw new Error('Recipients list is empty')
-
-  if (self.seed === null)
-    throw new Error('Mnemonic not set')
+  if (self.readOnly) { return cb(new Error('Payment has already been comitted')) }
+  if (self.recipients.length === 0) { return cb(new Error('Recipients list is empty')) }
+  if (self.seed === null) { return cb(new Error('Mnemonic not set')) }
 
   var assetdef = self.assetModel.getAssetDefinition()
 
-  var rawTargets = self.getRecipients().map(function(recipient) {
+  var rawTargets = self.getRecipients().map(function (recipient) {
     return {
       address: self.assetModel.getWallet().getBitcoinAddress(assetdef, recipient.address),
       value: assetdef.parseValue(recipient.amount)
@@ -124,18 +121,16 @@ PaymentModel.prototype.send = function(cb) {
   self.readOnly = true
   self.status = 'sending'
 
-  var txId
   var wallet = self.assetModel.getWallet()
-  Q.ninvoke(wallet, 'createTx', self.assetModel.getAssetDefinition(), rawTargets).then(function(tx) {
+  Q.ninvoke(wallet, 'createTx', self.assetModel.getAssetDefinition(), rawTargets).then(function (tx) {
     return Q.ninvoke(wallet, 'transformTx', tx, 'signed', self.seed)
 
-  }).then(function(tx) {
-    txId = tx.getId()
+  }).then(function (tx) {
     return Q.ninvoke(wallet, 'sendTx', tx)
 
   }).done(function () {
     self.status = 'send'
-    cb(null, txId)
+    cb(null)
 
   }, function (error) {
     self.status = 'failed'
@@ -149,9 +144,8 @@ PaymentModel.prototype.send = function(cb) {
 /**
  * @return {string}
  */
-PaymentModel.prototype.getStatus = function() {
-  if (!this.readOnly)
-    return 'fresh'
+PaymentModel.prototype.getStatus = function () {
+  if (!this.readOnly) { return 'fresh' }
 
   return this.status
 }

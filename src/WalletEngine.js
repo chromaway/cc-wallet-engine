@@ -51,8 +51,7 @@ function WalletEngine(opts) {
   self._wallet = new ccWallet(opts)
   self._wallet.on('error', function (error) { self.emit('error', error) })
 
-  if (self._wallet.isInitialized())
-    self._initializeWalletEngine()
+  if (self._wallet.isInitialized()) { self._initializeWalletEngine() }
 }
 
 util.inherits(WalletEngine, events.EventEmitter)
@@ -78,7 +77,7 @@ WalletEngine.prototype.setCallback = function (callback) {
 /**
  * @return {boolean}
  */
-WalletEngine.prototype.isInitialized = function() {
+WalletEngine.prototype.isInitialized = function () {
   return !!this.getSeed() && !!this.getPin() && this._wallet.isInitialized()
 }
 
@@ -151,31 +150,24 @@ WalletEngine.prototype.getPin = function () {
  * @throws {Error} If seed es not set
  */
 WalletEngine.prototype.getPinEncrypted = function () {
-  if (!this.hasSeed())
-    throw new Error('No seed set')
+  if (!this.hasSeed()) { throw new Error('No seed set') }
 
   var encrypted = CryptoJS.AES.encrypt(
-    this._pin,
-    this.getSeed(),
-    { format: JsonFormatter }
-  )
+    this._pin, this.getSeed(), {format: JsonFormatter})
 
   return encrypted.toString()
 }
 
 /**
- * @param {strin} pin
+ * @param {strin} encryptedPin
  * @throws {Error} If seed es not set
  */
 WalletEngine.prototype.setPinEncrypted = function (encryptedPin) {
-  if (!this.hasSeed())
-    throw new Error('No seed set')
+  if (!this.hasSeed()) { throw new Error('No seed set') }
 
   var decrypted = CryptoJS.AES.decrypt(
-    encryptedPin,
-    this.getSeed(),
-    { format: JsonFormatter }
-  )
+    encryptedPin, this.getSeed(), {format: JsonFormatter})
+
   this._pin = decrypted.toString(CryptoJS.enc.Utf8)
 }
 
@@ -206,8 +198,9 @@ WalletEngine.prototype.getSeed = function () {
  * @throws {Error} If wrong seed
  */
 WalletEngine.prototype.setSeed = function (mnemonic, password) {
-  if (!!this._wallet.isInitialized() && !this.isCurrentMnemonic(mnemonic, password))
+  if (!!this._wallet.isInitialized() && !this.isCurrentMnemonic(mnemonic, password)) {
     throw new Error('Wrong seed')
+  }
 
   // only ever store see here and only in ram
   this._seed = BIP39.mnemonicToSeedHex(mnemonic, password)
@@ -232,16 +225,15 @@ WalletEngine.prototype.stored_encryptedpin = function () {
  */
 WalletEngine.prototype.canResetSeed = function () {
   return (
-    !this.hasSeed() && 
-    !!this.stored_mnemonic() && 
-    !!this.stored_encryptedpin() && 
+    !this.hasSeed() &&
+    !!this.stored_mnemonic() &&
+    !!this.stored_encryptedpin() &&
     this._wallet.isInitialized()
   )
 }
 
 WalletEngine.prototype.resetSeed = function (password) {
-  if (!this.canResetSeed())
-    throw new Error('Cannot reset seed!')
+  if (!this.canResetSeed()) { throw new Error('Cannot reset seed!') }
 
   this.setSeed(this.stored_mnemonic(), password)
   this.setPinEncrypted(this.stored_encryptedpin())
@@ -251,8 +243,7 @@ WalletEngine.prototype.resetSeed = function (password) {
  * @return {AssetModel[]}
  */
 WalletEngine.prototype.getAssetModels = function () {
-  if (!this._wallet.isInitialized())
-    return []
+  if (!this._wallet.isInitialized()) { return [] }
 
   return this._assetModels.getAssetModels()
 }
@@ -271,8 +262,7 @@ WalletEngine.prototype.getAssetModelById = function (assetId) {
 /**
  */
 WalletEngine.prototype.getHistory = function () {
-  if (!this._wallet.isInitialized())
-    return []
+  if (!this._wallet.isInitialized()) { return [] }
 
   return _.chain(this._assetModels.getAssetModels())
     .map(function (am) { return am.getHistory() })
@@ -292,37 +282,33 @@ WalletEngine.prototype.getHistory = function () {
  * @param {WalletEngine~makePaymentFromURI} cb
  */
 WalletEngine.prototype.makePaymentFromURI = function (uri, cb) {
-  if (!this._wallet.isInitialized())
-    return cb(new Error('not initialized'))
+  var self = this
 
-  var paymentModel
-  function callback(error) {
-    return error ? cb(error) : cb(null, paymentModel)
+  if (!self._wallet.isInitialized()) {
+    return cb(new Error('not initialized'))
   }
 
   if (cwpp.is_cwpp_uri(uri)) {
-    paymentModel = new CWPPPaymentModel(this, uri)
-    if (this.hasSeed())
-      paymentModel.setSeed(this.getSeed())
+    var paymentModel = new CWPPPaymentModel(self, uri)
+    if (self.hasSeed()) {
+      paymentModel.setSeed(self.getSeed())
+    }
 
-    return paymentModel.initialize(callback)
+    return paymentModel.initialize(function (error) { cb(error, paymentModel) })
   }
 
-  try {
-    var asset = this._assetModels.getAssetForURI(uri)
-    if (!asset)
-      return cb(new Error('Asset not recognized'))
-
-    paymentModel = asset.makePaymentFromURI(uri)
-    if (this.hasSeed())
-      paymentModel.setSeed(this.getSeed())
-
-    callback(null)
-
-  } catch (error) {
-    callback(error)
-
+  var asset = self._assetModels.getAssetForURI(uri)
+  if (asset === null) {
+    return cb(new Error('Asset not recognized'))
   }
+
+  asset.makePaymentFromURI(uri, function (error, paymentModel) {
+    if (error === null && self.hasSeed()) {
+      paymentModel.setSeed(self.getSeed())
+    }
+
+    cb(error, paymentModel)
+  })
 }
 
 /**

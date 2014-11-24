@@ -13,21 +13,21 @@ function HistoryTargetModel(historyTarget) {
 /**
  * @return {string}
  */
-HistoryTargetModel.prototype.getAddress = function() {
+HistoryTargetModel.prototype.getAddress = function () {
   return this.address
 }
 
 /**
  * @return {string}
  */
-HistoryTargetModel.prototype.getAssetMoniker = function() {
+HistoryTargetModel.prototype.getAssetMoniker = function () {
   return this.assetMoniker
 }
 
 /**
  * @return {string}
  */
-HistoryTargetModel.prototype.getFormattedValue = function() {
+HistoryTargetModel.prototype.getFormattedValue = function () {
   return this.formattedValue
 }
 

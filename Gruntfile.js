@@ -1,4 +1,4 @@
-module.exports = function(grunt) {
+module.exports = function (grunt) {
   grunt.initConfig({
     pkg: grunt.file.readJSON('package.json'),
     browserify: {
@@ -28,13 +28,19 @@ module.exports = function(grunt) {
         reporter: require('jshint-stylish')
       }
     },
+    jscs: {
+      src: ['Gruntfile.js', 'src/*.js', 'test/*.js'],
+      options: {
+        config: '.jscsrc'
+      }
+    },
     mocha_istanbul: {
       coverage: {
         src: 'test',
         options: {
           mask: '*.js',
           reporter: 'spec',
-          timeout: 60*1000
+          timeout: 60000
         }
       },
       coveralls: {
@@ -43,7 +49,7 @@ module.exports = function(grunt) {
           coverage: true,
           mask: '*.js',
           reporter: 'spec',
-          timeout: 60*1000
+          timeout: 60000
         }
       }
     },
@@ -51,7 +57,7 @@ module.exports = function(grunt) {
       test: {
         options: {
           reporter: 'spec',
-          timeout: 60*1000
+          timeout: 60000
         },
         src: ['test/*.js']
       }
@@ -78,9 +84,10 @@ module.exports = function(grunt) {
   })
 
   grunt.event.on('coverage', function (lcov, done) {
-    require('coveralls').handleInput(lcov, function(error) {
-      if (error && !(error instanceof Error))
+    require('coveralls').handleInput(lcov, function (error) {
+      if (error && !(error instanceof Error)) {
         error = new Error(error)
+      }
 
       done(error)
     })
@@ -92,6 +99,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-uglify')
   grunt.loadNpmTasks('grunt-contrib-watch')
   grunt.loadNpmTasks('grunt-mocha-istanbul')
+  grunt.loadNpmTasks('grunt-jscs')
   grunt.loadNpmTasks('grunt-mocha-test')
 
   grunt.registerTask('compile', ['browserify:production', 'uglify:production'])
