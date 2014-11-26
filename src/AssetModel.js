@@ -2,11 +2,13 @@ var events = require('events')
 var util = require('util')
 
 var _ = require('lodash')
+var Q = require('q')
 
 var HistoryEntryModel = require('./HistoryEntryModel')
 var PaymentModel = require('./PaymentModel')
 var PaymentRequestModel = require('./PaymentRequestModel')
 var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
+var AsyncUpdater = require('./AsyncUpdater')
 
 
 /**
@@ -41,21 +43,33 @@ function AssetModel(walletEngine, assetdef) {
     historyEntries: []
   }
 
-  self._wallet.on('newHeight', self._update.bind(self))
-  self._wallet.on('updateTx', self._update.bind(self))
+  var _asyncUpdater = new AsyncUpdater(self._update.bind(self))
+  self._asyncUpdater = _asyncUpdater
+  _asyncUpdater.on('beginUpdating', function () {self.emit('beginUpdating')})
+  _asyncUpdater.on('endUpdating', function () {self.emit('endUpdating')})
+
+  function notifyNeedsUpdate() {  self._asyncUpdater.notifyNeedsUpdate()   }
+
+  self._wallet.on('newHeight', notifyNeedsUpdate)
+  self._wallet.on('updateTx', notifyNeedsUpdate)
   self._wallet.on('touchAsset', function (assetdef) {
-    if (self._assetdef.getId() === assetdef.getId()) { self._update() }
+    if (self._assetdef.getId() === assetdef.getId()) { notifyNeedsUpdate() }
   })
 
-  self._update()
+  notifyNeedsUpdate()
 }
 
 util.inherits(AssetModel, events.EventEmitter)
 
+
+AssetModel.prototype.isUpdating = function () {
+  return this._asyncUpdater.isUpdating()
+}
+
 /**
  * Update current AssetModel
  */
-AssetModel.prototype._update = function () {
+AssetModel.prototype._update = function (cb) {
   var self = this
 
   var moniker = self._assetdef.getMonikers()[0]
@@ -71,9 +85,7 @@ AssetModel.prototype._update = function () {
     self.emit('update')
   }
 
-  self._wallet.getBalance(self._assetdef, function (error, balance) {
-    if (error !== null) { return self.emit('error', error) }
-
+  var bpromise = Q.ninvoke(self._wallet, 'getBalance', self._assetdef).then(function (balance) {
     var isChanged = false
     function updateBalance(balanceType, value) {
       var formattedValue = self._assetdef.formatValue(value)
@@ -90,9 +102,7 @@ AssetModel.prototype._update = function () {
     if (isChanged) { self.emit('update') }
   })
 
-  self._wallet.getHistory(self._assetdef, function (error, entries) {
-    if (error !== null) { return self.emit('error', error) }
-
+  var hpromise = Q.ninvoke(self._wallet, 'getHistory', self._assetdef).then(function (entries) {
     function entryEqualFn(entry, index) { return entry.getTxId() === entries[index].getTxId() }
     var isEqual = self.props.historyEntries.length === entries.length && self.props.historyEntries.every(entryEqualFn)
     if (isEqual) { return }
@@ -103,6 +113,13 @@ AssetModel.prototype._update = function () {
 
     self.emit('update')
   })
+
+  Q.all([bpromise, hpromise]).done(
+      function () {cb(null)},
+      function(err) {
+          self.emit('error', err)
+          cb(err)
+      });
 }
 
 /**

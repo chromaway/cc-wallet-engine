@@ -6,7 +6,6 @@ var ccWallet = require('cc-wallet-core').Wallet
 var CryptoJS = require('crypto-js')
 var _ = require('lodash')
 var store = require('store')
-var delayed = require('delayed')
 var moment = require('moment')
 
 var AssetModels = require('./AssetModels')
@@ -46,6 +45,9 @@ function WalletEngine(opts) {
   }, opts)
 
   self.setCallback(function () {})
+  self._updateCallbackScheduling = false
+  self._isUpdating = false
+  self._isSyncing = false
   self._assetModels = null
 
   self._wallet = new ccWallet(opts)
@@ -64,6 +66,13 @@ WalletEngine.prototype.getWallet = function () {
 }
 
 /**
+ * @return {boolean}
+ */
+WalletEngine.prototype.isUpdating = function () {
+  return this._isUpdating;
+}
+
+/**
  * @callback WalletEngine~setCallback
  */
 
@@ -71,7 +80,28 @@ WalletEngine.prototype.getWallet = function () {
  * @param {WalletEngine~setCallback} callback
  */
 WalletEngine.prototype.setCallback = function (callback) {
-  this._updateCallback = delayed.debounce(callback, 100)
+  this._updateCallback = callback
+}
+
+WalletEngine.prototype._onUpdate = function () {
+  var prevIsUpdating = this._isUpdating;
+  var curIsUpdating = this._isSyncing || this._assetModels.isUpdating();
+  console.log("prev: " + prevIsUpdating + "cur: " + curIsUpdating)
+  this._isUpdating = curIsUpdating;
+
+  if (prevIsUpdating && curIsUpdating) 
+      return; // skip when we are still updating
+
+  if (this._updateCallbackScheduled)
+      return; // skip when we're going to call it in future
+
+  this._updateCallbackScheduled = true;
+  this._isUpdating = curIsUpdating;
+  var self = this;
+  setTimeout(function () {
+      self._updateCallbackScheduled = false;
+      self._updateCallback();      
+  }, 50);
 }
 
 /**
@@ -101,16 +131,20 @@ WalletEngine.prototype.initialize = function (mnemonic, password, pin) {
 WalletEngine.prototype._initializeWalletEngine = function () {
   var self = this
 
+  self._isSyncing = true
   self._assetModels = new AssetModels(self)
-  self._assetModels.on('update', function () { self._updateCallback() })
+  self._assetModels.on('update', self._onUpdate.bind(self))
   self._assetModels.on('error', function (error) { self.emit('error', error) })
 
   function subscribeCallback(error) {
+    console.log('sync done')
     if (error !== null) { self.emit('error', error) }
+    self._isSyncing = false
+    self._onUpdate()    
   }
   self._wallet.on('newAddress', function () {
+    self._isSyncing = true
     self._wallet.subscribeAndSyncAllAddresses(subscribeCallback)
-    self.emit('update')
   })
   self._wallet.subscribeAndSyncAllAddresses(subscribeCallback)
 }
