@@ -1,88 +1,84 @@
 var expect = require('chai').expect
 
-var ccWallet = require('cc-wallet-core').Wallet
-var _ = require('lodash')
 var moment = require('moment')
 
-var AssetModels = require('../src/AssetModels')
-var AssetModel = require('../src/AssetModel')
+var WalletEngine = require('../src/WalletEngine')
 var HistoryEntryModel = require('../src/HistoryEntryModel')
 
 
-describe('HistoryEntryModel', function() {
-  var wallet, assetModels, assetModel, historyEntry
+describe('HistoryEntryModel', function () {
+  var wallet
+  var historyEntry
 
-  beforeEach(function(done) {
-    wallet = new ccWallet({ testnet: true })
-    wallet.initialize('12355564466111166655222222222222')
-    wallet.fullScanAllAddresses(function(error) {
+  beforeEach(function (done) {
+    localStorage.clear()
+    wallet = new WalletEngine({
+      testnet: true,
+      blockchain: 'NaiveBlockchain',
+      storageSaveTimeout: 0,
+      spendUnconfirmedCoins: true
+    })
+    wallet.on('error', function (error) { throw error })
+    wallet.getWallet().initialize('12355564466111166655222222222222')
+
+    // @todo N
+    wallet.getWallet().subscribeAndSyncAllAddresses(function (error) {
       expect(error).to.be.null
 
-      assetModels = new AssetModels(wallet)
-      var cnt = 0
-      assetModels.on('update', function() {
-        if (++cnt !== 7)
-          return
+      wallet.getWallet().getHistory(function (error, entries) {
+        expect(error).to.be.null
 
-        expect(assetModels.getAssetModels()).to.have.length(1)
-        expect(assetModels.getAssetModels()[0]).to.be.instanceof(AssetModel)
-        assetModel = assetModels.getAssetModels()[0]
-
-        expect(assetModel.getHistory()).to.be.instanceof(Array).with.to.have.length(1)
-        expect(assetModel.getHistory()[0]).to.be.instanceof(HistoryEntryModel)
-        historyEntry = assetModel.getHistory()[0]
+        expect(entries).to.be.instanceof(Array).with.to.have.length(1)
+        historyEntry = new HistoryEntryModel(entries[0])
 
         done()
       })
-      assetModels.update()
     })
   })
 
-  afterEach(function() {
+  afterEach(function () {
+    historyEntry = undefined
+    wallet.removeListeners()
     wallet.clearStorage()
+    wallet = undefined
   })
 
-  it('getTxId', function() {
+  it('getTxId', function () {
     expect(historyEntry.getTxId()).to.equal('51e8dfe12367d3a0e9a9c8c558c774b98330561a12a8e3fdc805f6e6d25dc7db')
   })
 
-  it('getDate', function() {
-    var date = moment(historyEntry.getDate(), 'MM/DD/YY HH:mm:ss')
-    date = date.unix() + new Date().getTimezoneOffset() * 60
-    expect(date).to.equal(1408465527)
+  it('getDate', function () {
+    var timestamp = historyEntry.historyEntry.getTimestamp() - new Date().getTimezoneOffset() * 60
+    var date = moment(timestamp * 1000).format('MM/DD/YY HH:mm:ss')
+    var expectedValue = (historyEntry.historyEntry.isBlockTimestamp() ? '~' : '') + date
+    expect(historyEntry.getDate()).to.equal(expectedValue)
   })
 
-  it('getValues', function() {
-    expect(historyEntry.getValues()).to.deep.equal([ '0.01000000' ])
+  it('getValues', function () {
+    expect(historyEntry.getValues()).to.deep.equal(['0.01000000'])
   })
 
-  // return AssetTargetModel
-  it.skip('getTargets', function() {
-    var expectedTargets = [
-      {
-        address: 'mv4jLE114t8KHL3LExNGBTXiP2dCjkaWJh',
-        formattedValue: '0.01000000',
-        assetMoniker: 'bitcoin'
-      }
-    ]
-    console.log(historyEntry.getTargets())
-    console.log(expectedTargets)
-    expect(historyEntry.getTargets()).to.deep.equal(expectedTargets)
+  it('getTargets', function () {
+    var models = historyEntry.getTargets()
+    expect(models).to.be.instanceof(Array).with.length(1)
+    expect(models[0].getAddress()).to.equal('mv4jLE114t8KHL3LExNGBTXiP2dCjkaWJh')
+    expect(models[0].getAssetMoniker()).to.equal('bitcoin')
+    expect(models[0].getFormattedValue()).to.equal('0.01000000')
   })
 
-  it('isSend', function() {
+  it('isSend', function () {
     expect(historyEntry.isSend()).to.be.false
   })
 
-  it('isReceive', function() {
+  it('isReceive', function () {
     expect(historyEntry.isReceive()).to.be.true
   })
 
-  it('isPaymentToYourself', function() {
+  it('isPaymentToYourself', function () {
     expect(historyEntry.isPaymentToYourself()).to.be.false
   })
 
-  it('getTransactionType', function() {
+  it('getTransactionType', function () {
     expect(historyEntry.getTransactionType()).to.equal('Receive')
   })
 })

@@ -1,23 +1,23 @@
-var CryptoJS = require("crypto-js")
+var CryptoJS = require('crypto-js')
 
 
 /**
  * Taken from https://code.google.com/p/crypto-js/#The_Cipher_Output
  */
-var JsonFormatter = { 
-  stringify: function(cipherParams) {
+var JsonFormatter = {
+  stringify: function (cipherParams) {
     // create json object with ciphertext
-    var jsonObj = { ct: cipherParams.ciphertext.toString(CryptoJS.enc.Base64) }
+    var jsonObj = {ct: cipherParams.ciphertext.toString(CryptoJS.enc.Base64)}
 
     // optionally add iv and salt
-    if (cipherParams.iv) jsonObj.iv = cipherParams.iv.toString()
-    if (cipherParams.salt) jsonObj.s = cipherParams.salt.toString()
+    if (cipherParams.iv) { jsonObj.iv = cipherParams.iv.toString() }
+    if (cipherParams.salt) { jsonObj.s = cipherParams.salt.toString() }
 
     // stringify json object
     return JSON.stringify(jsonObj)
   },
 
-  parse: function(jsonStr) {
+  parse: function (jsonStr) {
     // parse json string
     var jsonObj = JSON.parse(jsonStr)
 
@@ -27,8 +27,8 @@ var JsonFormatter = {
     })
 
     // optionally extract iv and salt
-    if (jsonObj.iv) cipherParams.iv = CryptoJS.enc.Hex.parse(jsonObj.iv)
-    if (jsonObj.s) cipherParams.salt = CryptoJS.enc.Hex.parse(jsonObj.s)
+    if (jsonObj.iv) { cipherParams.iv = CryptoJS.enc.Hex.parse(jsonObj.iv) }
+    if (jsonObj.s) { cipherParams.salt = CryptoJS.enc.Hex.parse(jsonObj.s) }
 
     return cipherParams;
   }

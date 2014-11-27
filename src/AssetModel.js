@@ -1,11 +1,19 @@
 var events = require('events')
 var util = require('util')
 
-var HistoryEntryModel = require('./HistoryEntryModel')
+var _ = require('lodash')
+var Q = require('q')
+
 var PaymentModel = require('./PaymentModel')
-
+var PaymentRequestModel = require('./PaymentRequestModel')
 var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
+var AsyncUpdater = require('./AsyncUpdater')
 
+
+/**
+ * @event AssetModel#error
+ * @param {Error}
+ */
 
 /**
  * @event AssetModel#update
@@ -14,29 +22,112 @@ var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
 /**
  * @class AssetModel
  * @extends events.EventEmitter
- *
- * @param {cc-wallet-engine.WalletEngine} walletEngine
- * @param {cc-wallet-core.Wallet} wallet
+ * @param {WalletEngine} walletEngine
  * @param {cc-wallet-core.asset.AssetDefinition} assetdef
  */
-function AssetModel(walletEngine, wallet, assetdef) {
-  events.EventEmitter.call(this)
+function AssetModel(walletEngine, assetdef) {
+  var self = this
+  events.EventEmitter.call(self)
 
-  this.walletEngine = walletEngine
-  this.wallet = wallet
-  this.assetdef = assetdef
+  self._wallet = walletEngine.getWallet()
+  self._walletEngine = walletEngine
+  self._assetdef = assetdef
 
-  this.props = {
+  self.props = {
     moniker: '',
     address: '',
     unconfirmedBalance: '',
     availableBalance: '',
-    totalBalance: '',
-    historyEntries: []
+    totalBalance: ''
   }
+
+  var _asyncUpdater = new AsyncUpdater(self._update.bind(self))
+  self._asyncUpdater = _asyncUpdater
+  _asyncUpdater.on('beginUpdating', function () {self.emit('beginUpdating')})
+  _asyncUpdater.on('endUpdating', function () {self.emit('endUpdating')})
+
+  function notifyNeedsUpdate() {  self._asyncUpdater.notifyNeedsUpdate()   }
+
+  self._wallet.on('newHeight', notifyNeedsUpdate)
+  self._wallet.on('updateTx', notifyNeedsUpdate)
+  self._wallet.on('touchAsset', function (assetdef) {
+    if (self._assetdef.getId() === assetdef.getId()) { notifyNeedsUpdate() }
+  })
+
+  notifyNeedsUpdate()
 }
 
 util.inherits(AssetModel, events.EventEmitter)
+
+
+AssetModel.prototype.isUpdating = function () {
+  return this._asyncUpdater.isUpdating()
+}
+
+/**
+ * @callback AssetModel~_update
+ * @param {?Error} error
+ */
+
+/**
+ * Update current AssetModel
+ * @param {AssetModel~_update} cb
+ */
+AssetModel.prototype._update = function (cb) {
+  var self = this
+
+  var moniker = self._assetdef.getMonikers()[0]
+  if (self.props.moniker !== moniker) {
+    self.props.moniker = moniker
+    self.emit('update')
+  }
+
+  var isBitcoin = (self._assetdef.getId() === 'JNu4AFCBNmTE1')
+  var address = self._wallet.getSomeAddress(self._assetdef, !isBitcoin)
+  if (self.props.address !== address) {
+    self.props.address = address
+    self.emit('update')
+  }
+
+  Q.ninvoke(self._wallet, 'getBalance', self._assetdef).then(function (balance) {
+    var isChanged = false
+    function updateBalance(balanceType, value) {
+      var formattedValue = self._assetdef.formatValue(value)
+      if (self.props[balanceType] !== formattedValue) {
+        self.props[balanceType] = formattedValue
+        isChanged = true
+      }
+    }
+
+    updateBalance('totalBalance', balance.total)
+    updateBalance('availableBalance', balance.available)
+    updateBalance('unconfirmedBalance', balance.unconfirmed)
+
+    if (isChanged) { self.emit('update') }
+
+  }).done(function () {
+    cb(null)
+
+  }, function (err) {
+    self.emit('error', err)
+    cb(err)
+
+  })
+}
+
+/**
+ * @return {cc-wallet-core.Wallet}
+ */
+AssetModel.prototype.getWallet = function () {
+  return this._wallet
+}
+
+/**
+ * @return {cc-wallet-core.asset.AssetDefinition}
+ */
+AssetModel.prototype.getAssetDefinition = function () {
+  return this._assetdef
+}
 
 /**
  * @return {string}
@@ -74,105 +165,52 @@ AssetModel.prototype.getTotalBalance = function () {
 }
 
 /**
- * @return {HistoryEntryModel[]}
+ * @return {PaymentModel}
  */
-AssetModel.prototype.getHistory = function() {
-  return this.props.historyEntries
+AssetModel.prototype.makePayment = function () {
+  return new PaymentModel(this, this._walletEngine.getSeed())
 }
 
 /**
- * @return {PaymentModel}
+ * @return {PaymentRequestModel}
  */
-AssetModel.prototype.makePayment = function() {
-  return new PaymentModel(this, this.walletEngine.getSeed())
+AssetModel.prototype.makePaymentRequest = function (props) {
+  return new PaymentRequestModel(this._wallet, this._assetdef, props)
 }
+
+/**
+ * @callback AssetModel~makePaymentFromURI
+ * @param {?Error} error
+ * @param {PaymentModel} paymentModel
+ */
 
 /**
  * @param {string} uri
+ * @param {AssetModel~makePaymentFromURI} cb
+
  * @return {PaymentModel}
  * @throws {Error}
  */
-AssetModel.prototype.makePaymentFromURI = function (uri) {
+AssetModel.prototype.makePaymentFromURI = function (uri, cb) {
   var params = decode_bitcoin_uri(uri)
-  if (!params || !params.address)
-    throw new Error('wrong payment URI')
+  if (params === null || _.isUndefined(params.address)) {
+    return cb(new Error('wrong payment URI'))
+  }
 
   // by default assetId for bitcoin
-  var assetId = params.asset_id || 'JNu4AFCBNmTE1'
-  if (assetId !== this.assetdef.getId())
-    throw new Error('wrong payment URI (wrong asset)')
+  var assetId = _.isUndefined(params.asset_id) ? 'JNu4AFCBNmTE1' : params.asset_id
+  if (assetId !== this._assetdef.getId()) {
+    return cb(new Error('wrong payment URI (wrong asset)'))
+  }
 
   var colorAddress = params.address
-  if (assetId !== 'JNu4AFCBNmTE1')
+  if (assetId !== 'JNu4AFCBNmTE1') {
     colorAddress = assetId + '@' + colorAddress
+  }
 
   var payment = this.makePayment()
   payment.addRecipient(colorAddress, params.amount)
-  return payment
-}
-
-/**
- * Update current AssetModel
- */
-AssetModel.prototype.update = function() {
-  var self = this
-
-  var moniker = self.assetdef.getMonikers()[0]
-  if (self.props.moniker !== moniker) {
-    self.props.moniker = moniker
-    self.emit('update')
-  }
-
-  var isBitcoin = (self.assetdef.getId() == 'JNu4AFCBNmTE1')
-  var address = self.wallet.getSomeAddress(self.assetdef, !isBitcoin)
-  if (self.props.address !== address) {
-    self.props.address = address
-    self.emit('update')
-  }
-
-  function updateBalance(balanceName, balance) {
-    var formattedBalance = self.assetdef.formatValue(balance)
-
-    if (self.props[balanceName] !== formattedBalance) {
-      self.props[balanceName] = formattedBalance
-      self.emit('update')
-    }
-  }
-
-  self.wallet.getUnconfirmedBalance(self.assetdef, function(error, balance) {
-    if (error === null)
-      updateBalance('unconfirmedBalance', balance)
-    else console.log(error)
-  })
-
-  self.wallet.getAvailableBalance(self.assetdef, function(error, balance) {
-    if (error === null)
-      updateBalance('availableBalance', balance)
-    else console.log(error)
-  })
-
-  self.wallet.getTotalBalance(self.assetdef, function(error, balance) {
-    if (error === null)
-      updateBalance('totalBalance', balance)
-    else console.log(error)
-  })
-
-  self.wallet.getHistory(self.assetdef, function(error, entries) {
-    if (error)
-      return
-
-    function entryEqualFn(entry, index) { return entry.getTxId() === entries[index].getTxId() }
-
-    var isEqual = self.props.historyEntries.length === entries.length && self.props.historyEntries.every(entryEqualFn)
-    if (isEqual)
-        return
-
-    self.props.historyEntries = entries.map(function(entry) { 
-        return new HistoryEntryModel(entry)
-    }).reverse()
-
-    self.emit('update')
-  })
+  cb(null, payment)
 }
 
 

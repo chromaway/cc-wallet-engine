@@ -1,117 +1,107 @@
 var expect = require('chai').expect
 
 var BIP39 = require('bip39')
-var ccWallet = require('cc-wallet-core').Wallet
 
+var WalletEngine = require('../src/WalletEngine')
 var AssetModel = require('../src/AssetModel')
-var PaymentModel = require('../src/PaymentModel')
 
 
-describe.skip('PaymentModel', function() {
+describe('PaymentModel', function () {
   var mnemonic = 'aerobic naive paper isolate volume coffee minimum crucial purse inmate winner cricket'
   var password = ''
   var seed = BIP39.mnemonicToSeedHex(mnemonic, password)
 
-  var wallet, assetModel, paymentModel
+  var walletEngine
+  var paymentModel
 
-  beforeEach(function(done) {
-    wallet = new ccWallet({ testnet: true })
-    wallet.initialize(seed)
-    wallet.fullScanAllAddresses(function(error) {
+  beforeEach(function (done) {
+    localStorage.clear()
+    walletEngine = new WalletEngine({
+      testnet: true,
+      blockchain: 'NaiveBlockchain',
+      storageSaveTimeout: 0,
+      spendUnconfirmedCoins: true
+    })
+    walletEngine.getWallet().initialize(seed)
+    walletEngine.getWallet().subscribeAndSyncAllAddresses(function (error) {
       expect(error).to.be.null
 
+      var assetdef = walletEngine.getWallet().getAssetDefinitionByMoniker('bitcoin')
+      var assetModel = new AssetModel(walletEngine, assetdef)
+      assetModel.on('error', function (error) { throw error })
+
       var cnt = 0
-      assetModel = new AssetModel(wallet, wallet.getAssetDefinitionByMoniker('bitcoin'))
-      assetModel.on('update', function() {
-        if (++cnt === 6) {
+      assetModel.on('update', function () {
+        if (++cnt === 3) {
           paymentModel = assetModel.makePayment()
           done()
         }
       })
-      assetModel.update()
     })
   })
 
-  afterEach(function() {
-    wallet.clearStorage()
+  afterEach(function () {
+    paymentModel = undefined
+    walletEngine.removeListeners()
+    walletEngine.clearStorage()
+    walletEngine = undefined
   })
 
-  it('checkAddress return true', function() {
+  it('checkAddress return true', function () {
     var isValid = paymentModel.checkAddress('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5WgW')
     expect(isValid).to.be.true
   })
 
-  it('checkAddress return false', function() {
+  it('checkAddress return false', function () {
     var isValid = paymentModel.checkAddress('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5Wg')
     expect(isValid).to.be.false
   })
 
-  it('checkAmount return true', function() {
+  it('checkAmount return true', function () {
     var isValid = paymentModel.checkAmount('0.001')
     expect(isValid).to.be.true
   })
 
-  it('checkAmount return false', function() {
+  it('checkAmount return false', function () {
     var isValid = paymentModel.checkAmount('1')
     expect(isValid).to.be.false
   })
 
-  it('checkMnemonic return true', function() {
-    expect(paymentModel.checkMnemonic(mnemonic, password)).to.be.true
-  })
-
-  it('checkMnemonic return false', function() {
-    expect(paymentModel.checkMnemonic(mnemonic, password+'0')).to.be.false
-  })
-
-  it('setMnemonic not throw error', function() {
-    var fn = function() { paymentModel.setMnemonic(mnemonic, password) }
+  it('addRecipient not throw error', function () {
+    var fn = function () { paymentModel.addRecipient('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5WgW', '0.01') }
     expect(fn).to.not.throw(Error)
   })
 
-  it('setMnemonic throw error', function() {
+  it('addRecipient throw error', function () {
     paymentModel.readOnly = true
-    var fn = function() { paymentModel.setMnemonic(mnemonic, password) }
+    var fn = function () { paymentModel.addRecipient('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5WgW', '0.01') }
     expect(fn).to.throw(Error)
   })
 
-  it('addRecipient not throw error', function() {
-    var fn = function() { paymentModel.addRecipient('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5WgW', '0.01') }
-    expect(fn).to.not.throw(Error)
-  })
-
-  it('addRecipient throw error', function() {
-    paymentModel.readOnly = true
-    var fn = function() { paymentModel.addRecipient('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5WgW', '0.01') }
-    expect(fn).to.throw(Error)
-  })
-
-  it('send return txId', function(done) {
+  it('send', function (done) {
     paymentModel.addRecipient('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5WgW', '0.001')
-    paymentModel.setMnemonic(mnemonic, password)
-    paymentModel.send(function(error, txId) {
+    paymentModel.setSeed(seed)
+    paymentModel.send(function (error) {
       expect(error).to.be.null
-      expect(txId).to.be.an('string')
       done()
     })
   })
 
-  it('send throw error (payment already sent)', function() {
+  it('send throw error (payment already sent)', function () {
     paymentModel.readOnly = true
     expect(paymentModel.send).to.throw(Error)
   })
 
-  it('send throw error (recipient is empty)', function() {
+  it('send throw error (recipient is empty)', function () {
     expect(paymentModel.send).to.throw(Error)
   })
 
-  it('send throw error (mnemonic not set)', function() {
+  it('send throw error (mnemonic not set)', function () {
     paymentModel.addRecipient('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5WgW', '0.01')
     expect(paymentModel.send).to.throw(Error)
   })
 
-  // Todo: check other status
-  it('getStatus return fresh', function() {
+  it('getStatus return fresh', function () {
     expect(paymentModel.getStatus()).to.equal('fresh')
   })
 })
