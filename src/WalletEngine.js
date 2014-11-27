@@ -6,12 +6,12 @@ var ccWallet = require('cc-wallet-core').Wallet
 var CryptoJS = require('crypto-js')
 var _ = require('lodash')
 var store = require('store')
-var moment = require('moment')
 
 var AssetModels = require('./AssetModels')
 var JsonFormatter = require('./JsonFormatter')
 var cwpp = require('./cwpp')
 var CWPPPaymentModel = require('./CWPPPaymentModel')
+var HistoryEntryModel = require('./HistoryEntryModel')
 
 
 /**
@@ -49,6 +49,7 @@ function WalletEngine(opts) {
   self._isUpdating = false
   self._isSyncing = false
   self._assetModels = null
+  self._historyEntries = []
 
   self._wallet = new ccWallet(opts)
   self._wallet.on('error', function (error) { self.emit('error', error) })
@@ -83,6 +84,8 @@ WalletEngine.prototype.setCallback = function (callback) {
   this._updateCallback = callback
 }
 
+/**
+ */
 WalletEngine.prototype._onUpdate = function () {
   var prevIsUpdating = this._isUpdating
   var curIsUpdating = this._isSyncing || this._assetModels.isUpdating()
@@ -135,8 +138,24 @@ WalletEngine.prototype._initializeWalletEngine = function () {
 
   self._isSyncing = true
   self._assetModels = new AssetModels(self)
-  self._assetModels.on('update', self._onUpdate.bind(self))
   self._assetModels.on('error', function (error) { self.emit('error', error) })
+  self._assetModels.on('update', function () {
+    self._onUpdate()
+
+    self._wallet.getHistory(function (error, entries) {
+      if (error) { return }
+
+      function entryEqualFn(entry, index) { return entry.getTxId() === entries[index].getTxId() }
+      var isEqual = self._historyEntries.length === entries.length && self._historyEntries.every(entryEqualFn)
+      if (isEqual) { return }
+
+      self._historyEntries = entries.map(function (entry) {
+        return new HistoryEntryModel(entry)
+      }).reverse()
+
+      self._onUpdate()
+    })
+  })
 
   function subscribeCallback(error) {
     console.log('sync done')
@@ -301,13 +320,7 @@ WalletEngine.prototype.getAssetModelById = function (assetId) {
 /**
  */
 WalletEngine.prototype.getHistory = function () {
-  if (!this._wallet.isInitialized()) { return [] }
-
-  return _.chain(this._assetModels.getAssetModels())
-    .map(function (am) { return am.getHistory() })
-    .flatten()
-    .sortBy(function (hem) { return -moment(hem.getDate()).unix() })
-    .value()
+  return this._historyEntries
 }
 
 /**

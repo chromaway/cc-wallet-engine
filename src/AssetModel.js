@@ -4,7 +4,6 @@ var util = require('util')
 var _ = require('lodash')
 var Q = require('q')
 
-var HistoryEntryModel = require('./HistoryEntryModel')
 var PaymentModel = require('./PaymentModel')
 var PaymentRequestModel = require('./PaymentRequestModel')
 var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
@@ -39,8 +38,7 @@ function AssetModel(walletEngine, assetdef) {
     address: '',
     unconfirmedBalance: '',
     availableBalance: '',
-    totalBalance: '',
-    historyEntries: []
+    totalBalance: ''
   }
 
   var _asyncUpdater = new AsyncUpdater(self._update.bind(self))
@@ -91,7 +89,7 @@ AssetModel.prototype._update = function (cb) {
     self.emit('update')
   }
 
-  var bpromise = Q.ninvoke(self._wallet, 'getBalance', self._assetdef).then(function (balance) {
+  Q.ninvoke(self._wallet, 'getBalance', self._assetdef).then(function (balance) {
     var isChanged = false
     function updateBalance(balanceType, value) {
       var formattedValue = self._assetdef.formatValue(value)
@@ -106,21 +104,8 @@ AssetModel.prototype._update = function (cb) {
     updateBalance('unconfirmedBalance', balance.unconfirmed)
 
     if (isChanged) { self.emit('update') }
-  })
 
-  var hpromise = Q.ninvoke(self._wallet, 'getHistory', self._assetdef).then(function (entries) {
-    function entryEqualFn(entry, index) { return entry.getTxId() === entries[index].getTxId() }
-    var isEqual = self.props.historyEntries.length === entries.length && self.props.historyEntries.every(entryEqualFn)
-    if (isEqual) { return }
-
-    self.props.historyEntries = entries.map(function (entry) {
-      return new HistoryEntryModel(entry)
-    }).reverse()
-
-    self.emit('update')
-  })
-
-  Q.all([bpromise, hpromise]).done(function () {
+  }).done(function () {
     cb(null)
 
   }, function (err) {
@@ -177,13 +162,6 @@ AssetModel.prototype.getAvailableBalance = function () {
  */
 AssetModel.prototype.getTotalBalance = function () {
   return this.props.totalBalance
-}
-
-/**
- * @return {HistoryEntryModel[]}
- */
-AssetModel.prototype.getHistory = function () {
-  return this.props.historyEntries
 }
 
 /**

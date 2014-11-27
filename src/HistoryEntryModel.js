@@ -3,6 +3,13 @@ var HistoryTargetModel = require('./HistoryTargetModel')
 
 
 /**
+ * @constant
+ * @type {number}
+ */
+var TimezoneOffset = new Date().getTimezoneOffset() * 60
+
+
+/**
  * @class HistoryEntryModel
  * @param {cc-wallet-core.history.HistoryEntry} historyEntry
  */
@@ -21,13 +28,12 @@ HistoryEntryModel.prototype.getTxId = function () {
  * @return {string}
  */
 HistoryEntryModel.prototype.getDate = function () {
-  var timestamp = this.historyEntry.getTimestamp()
+  var timestamp = this.historyEntry.getTimestamp() - TimezoneOffset
   //Now all historyEntry have timestamp, even unconfirmed
   //if (!timestamp) { return 'unconfirmed' }
 
-  var timezoneOffset = new Date().getTimezoneOffset() * 60
-  var date = timestamp - timezoneOffset
-  return moment(date * 1000).format('MM/DD/YY HH:mm:ss')
+  var date = moment(timestamp * 1000).format('MM/DD/YY HH:mm:ss')
+  return (this.historyEntry.isBlockTimestamp() ? '~' : '') + date
 }
 
 /**
