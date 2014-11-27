@@ -32,7 +32,7 @@ describe('PaymentModel', function () {
 
       var cnt = 0
       assetModel.on('update', function () {
-        if (++cnt === 2) {
+        if (++cnt === 4) {
           paymentModel = assetModel.makePayment()
           done()
         }

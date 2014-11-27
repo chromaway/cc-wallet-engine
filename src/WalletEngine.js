@@ -69,7 +69,7 @@ WalletEngine.prototype.getWallet = function () {
  * @return {boolean}
  */
 WalletEngine.prototype.isUpdating = function () {
-  return this._isUpdating;
+  return this._isUpdating
 }
 
 /**
@@ -84,23 +84,25 @@ WalletEngine.prototype.setCallback = function (callback) {
 }
 
 WalletEngine.prototype._onUpdate = function () {
-  var prevIsUpdating = this._isUpdating;
-  var curIsUpdating = this._isSyncing || this._assetModels.isUpdating();
-  console.log("prev: " + prevIsUpdating + "cur: " + curIsUpdating)
-  this._isUpdating = curIsUpdating;
+  var prevIsUpdating = this._isUpdating
+  var curIsUpdating = this._isSyncing || this._assetModels.isUpdating()
+  console.log('prev: ' + prevIsUpdating + 'cur: ' + curIsUpdating)
+  this._isUpdating = curIsUpdating
 
-  if (prevIsUpdating && curIsUpdating) 
-      return; // skip when we are still updating
+  if (prevIsUpdating && curIsUpdating) {
+    return // skip when we are still updating
+  }
 
-  if (this._updateCallbackScheduled)
-      return; // skip when we're going to call it in future
+  if (this._updateCallbackScheduled) {
+    return // skip when we're going to call it in future
+  }
 
   this._updateCallbackScheduled = true;
-  this._isUpdating = curIsUpdating;
-  var self = this;
+  this._isUpdating = curIsUpdating
+  var self = this
   setTimeout(function () {
-      self._updateCallbackScheduled = false;
-      self._updateCallback();      
+    self._updateCallbackScheduled = false;
+    self._updateCallback()
   }, 50);
 }
 
@@ -140,12 +142,14 @@ WalletEngine.prototype._initializeWalletEngine = function () {
     console.log('sync done')
     if (error !== null) { self.emit('error', error) }
     self._isSyncing = false
-    self._onUpdate()    
+    self._onUpdate()
   }
-  self._wallet.on('newAddress', function () {
+
+  self._wallet.on('newAddress', function (address) {
     self._isSyncing = true
-    self._wallet.subscribeAndSyncAllAddresses(subscribeCallback)
+    self._wallet.subscribeAndSyncAddress(address.getAddress(), subscribeCallback)
   })
+
   self._wallet.subscribeAndSyncAllAddresses(subscribeCallback)
 }
 
@@ -287,8 +291,9 @@ WalletEngine.prototype.getAssetModels = function () {
  * @return {AssetModel}
  */
 WalletEngine.prototype.getAssetModelById = function (assetId) {
-  if (!this._wallet.isInitialized())
+  if (!this._wallet.isInitialized()) {
     throw new Error('not initialized')
+  }
 
   return this._assetModels.getAssetById(assetId)
 }

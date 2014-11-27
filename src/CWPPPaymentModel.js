@@ -50,8 +50,9 @@ CWPPPaymentModel.prototype.initialize = function (cb) {
 
     var assetId = self.payreq.assetId
     self.assetModel = self.walletEngine.getAssetModelById(assetId)
-    if (!self.assetModel)
+    if (!self.assetModel) {
       return cb(new Error('asset not found'))
+    }
 
     self.recipients = [{
       address: self.payreq.address,

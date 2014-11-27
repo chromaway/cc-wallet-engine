@@ -36,7 +36,7 @@ function AssetModels(walletEngine) {
 util.inherits(AssetModels, events.EventEmitter)
 
 AssetModels.prototype.isUpdating = function () {
-    return _.any(this._models, function (model) { return model.isUpdating() });
+  return _.any(this._models, function (model) { return model.isUpdating() })
 }
 
 /**
@@ -53,7 +53,7 @@ AssetModels.prototype._addAssetModel = function (assetdef) {
   assetModel.on('update', function () { self.emit('update') })
   // it isn't a problem that these events are emitted more often than necessary
   // as WalletEngine will be able to detect whether update is still in progress
-  // via isUpdating() 
+  // via isUpdating()
   assetModel.on('beginUpdating', function () { self.emit('update') })
   assetModel.on('endUpdating', function () { self.emit('update') })
 

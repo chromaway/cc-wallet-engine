@@ -67,7 +67,13 @@ AssetModel.prototype.isUpdating = function () {
 }
 
 /**
+ * @callback AssetModel~_update
+ * @param {?Error} error
+ */
+
+/**
  * Update current AssetModel
+ * @param {AssetModel~_update} cb
  */
 AssetModel.prototype._update = function (cb) {
   var self = this
@@ -114,12 +120,14 @@ AssetModel.prototype._update = function (cb) {
     self.emit('update')
   })
 
-  Q.all([bpromise, hpromise]).done(
-      function () {cb(null)},
-      function(err) {
-          self.emit('error', err)
-          cb(err)
-      });
+  Q.all([bpromise, hpromise]).done(function () {
+    cb(null)
+
+  }, function (err) {
+    self.emit('error', err)
+    cb(err)
+
+  })
 }
 
 /**
