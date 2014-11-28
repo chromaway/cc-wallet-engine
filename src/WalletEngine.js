@@ -6,6 +6,8 @@ var ccWallet = require('cc-wallet-core').Wallet
 var CryptoJS = require('crypto-js')
 var _ = require('lodash')
 var store = require('store')
+var delayed = require('delayed')
+var SyncMixin = require('cc-wallet-core').SyncMixin
 
 var AssetModels = require('./AssetModels')
 var JsonFormatter = require('./JsonFormatter')
@@ -24,9 +26,17 @@ var HistoryEntryModel = require('./HistoryEntryModel')
  */
 
 /**
+ * @event AssetModels#syncStart
+ */
+
+/**
+ * @event AssetModels#syncStop
+ */
+
+/**
  * @class WalletEngine
  * @extends events.EventEmitter
- *
+ * @mixins SyncMixin
  * @param {Object} [opts]
  * @param {boolean} [opts.testnet=false]
  * @param {string} [opts.network=Electrum] Available: Chain, Electrum
@@ -36,6 +46,7 @@ var HistoryEntryModel = require('./HistoryEntryModel')
 function WalletEngine(opts) {
   var self = this
   events.EventEmitter.call(self)
+  SyncMixin.call(self)
 
   opts = _.extend({
     testnet: false,
@@ -45,14 +56,13 @@ function WalletEngine(opts) {
   }, opts)
 
   self.setCallback(function () {})
-  self._updateCallbackScheduling = false
-  self._isUpdating = false
-  self._isSyncing = false
   self._assetModels = null
   self._historyEntries = []
 
   self._wallet = new ccWallet(opts)
   self._wallet.on('error', function (error) { self.emit('error', error) })
+  self._wallet.on('syncStart', function () { self._syncEnter() })
+  self._wallet.on('syncStop', function () { self._syncExit() })
 
   if (self._wallet.isInitialized()) { self._initializeWalletEngine() }
 }
@@ -67,13 +77,6 @@ WalletEngine.prototype.getWallet = function () {
 }
 
 /**
- * @return {boolean}
- */
-WalletEngine.prototype.isUpdating = function () {
-  return this._isUpdating
-}
-
-/**
  * @callback WalletEngine~setCallback
  */
 
@@ -81,32 +84,23 @@ WalletEngine.prototype.isUpdating = function () {
  * @param {WalletEngine~setCallback} callback
  */
 WalletEngine.prototype.setCallback = function (callback) {
-  this._updateCallback = callback
+  this._updateCallback = delayed.debounce(callback, 100)
 }
 
 /**
  */
-WalletEngine.prototype._onUpdate = function () {
-  var prevIsUpdating = this._isUpdating
-  var curIsUpdating = this._isSyncing || this._assetModels.isUpdating()
-  console.log('prev: ' + prevIsUpdating + 'cur: ' + curIsUpdating)
-  this._isUpdating = curIsUpdating
-
-  if (prevIsUpdating && curIsUpdating) {
-    return // skip when we are still updating
-  }
-
-  if (this._updateCallbackScheduled) {
-    return // skip when we're going to call it in future
-  }
-
-  this._updateCallbackScheduled = true;
-  this._isUpdating = curIsUpdating
+WalletEngine.prototype._update = function () {
   var self = this
-  setTimeout(function () {
-    self._updateCallbackScheduled = false;
+
+  if (!self.isSyncing()) {
+    return self._updateCallback()
+  }
+
+  function onSyncStop() {
+    self.removeListener('syncStop', onSyncStop)
     self._updateCallback()
-  }, 50);
+  }
+  self.on('syncStop', onSyncStop)
 }
 
 /**
@@ -136,13 +130,15 @@ WalletEngine.prototype.initialize = function (mnemonic, password, pin) {
 WalletEngine.prototype._initializeWalletEngine = function () {
   var self = this
 
-  self._isSyncing = true
   self._assetModels = new AssetModels(self)
   self._assetModels.on('error', function (error) { self.emit('error', error) })
+  self._assetModels.on('syncStart', function () { self._syncEnter() })
+  self._assetModels.on('syncStop', function () { self._syncExit() })
   self._assetModels.on('update', function () {
-    self._onUpdate()
-
+    self._update()
+    self._syncEnter()
     self._wallet.getHistory(function (error, entries) {
+      self._syncExit()
       if (error) { return }
 
       function entryEqualFn(entry, index) { return entry.getTxId() === entries[index].getTxId() }
@@ -153,22 +149,21 @@ WalletEngine.prototype._initializeWalletEngine = function () {
         return new HistoryEntryModel(entry)
       }).reverse()
 
-      self._onUpdate()
+      self._update()
     })
   })
 
   function subscribeCallback(error) {
-    console.log('sync done')
+    self._syncExit()
     if (error !== null) { self.emit('error', error) }
-    self._isSyncing = false
-    self._onUpdate()
   }
 
   self._wallet.on('newAddress', function (address) {
-    self._isSyncing = true
+    self._syncEnter()
     self._wallet.subscribeAndSyncAddress(address.getAddress(), subscribeCallback)
   })
 
+  self._syncEnter()
   self._wallet.subscribeAndSyncAllAddresses(subscribeCallback)
 }
 

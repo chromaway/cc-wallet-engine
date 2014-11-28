@@ -33,7 +33,7 @@ describe('AssetModel', function () {
 
     var cnt = 0
     assetModel.on('update', function () {
-      if (++cnt !== 4) { return }
+      if (++cnt !== 2) { return }
 
       expect(assetModel.getMoniker()).to.equal('bitcoin')
       expect(assetModel.getAddress()).to.equal('mv4jLE114t8KHL3LExNGBTXiP2dCjkaWJh')
