@@ -2,12 +2,13 @@ var events = require('events')
 var util = require('util')
 
 var _ = require('lodash')
+var delayed = require('delayed')
 var Q = require('q')
+var SyncMixin = require('cc-wallet-core').SyncMixin
 
 var PaymentModel = require('./PaymentModel')
 var PaymentRequestModel = require('./PaymentRequestModel')
 var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
-var AsyncUpdater = require('./AsyncUpdater')
 
 
 /**
@@ -20,76 +21,76 @@ var AsyncUpdater = require('./AsyncUpdater')
  */
 
 /**
+ * @event AssetModel#syncStart
+ */
+
+/**
+ * @event AssetModel#syncStop
+ */
+
+/**
  * @class AssetModel
  * @extends events.EventEmitter
+ * @mixins SyncMixin
  * @param {WalletEngine} walletEngine
  * @param {cc-wallet-core.asset.AssetDefinition} assetdef
  */
 function AssetModel(walletEngine, assetdef) {
   var self = this
   events.EventEmitter.call(self)
+  SyncMixin.call(self)
 
   self._wallet = walletEngine.getWallet()
   self._walletEngine = walletEngine
   self._assetdef = assetdef
 
+  var moniker = self._assetdef.getMonikers()[0]
+  var isBitcoin = (self._assetdef.getId() === 'JNu4AFCBNmTE1')
+  var address = self._wallet.getSomeAddress(self._assetdef, !isBitcoin)
   self.props = {
-    moniker: '',
-    address: '',
+    moniker: moniker,
+    address: address,
     unconfirmedBalance: '',
     availableBalance: '',
     totalBalance: ''
   }
 
-  var _asyncUpdater = new AsyncUpdater(self._update.bind(self))
-  self._asyncUpdater = _asyncUpdater
-  _asyncUpdater.on('beginUpdating', function () {self.emit('beginUpdating')})
-  _asyncUpdater.on('endUpdating', function () {self.emit('endUpdating')})
+  var updateQueue = []
+  var update = delayed.debounce(function () {
+    self._syncEnter()
 
-  function notifyNeedsUpdate() {  self._asyncUpdater.notifyNeedsUpdate()   }
+    updateQueue.push(Q.defer())
+    if (updateQueue.length === 1) { updateQueue[0].resolve() }
 
-  self._wallet.on('newHeight', notifyNeedsUpdate)
-  self._wallet.on('updateTx', notifyNeedsUpdate)
+    _.last(updateQueue).promise.then(function () {
+      return self._update()
+
+    }).finally(function () {
+      updateQueue.shift()
+      if (updateQueue.length > 0) { updateQueue[0].resolve() }
+
+      self._syncExit()
+    })
+
+  }, 100)
+
+  self._wallet.on('updateTx', function () { update() })
   self._wallet.on('touchAsset', function (assetdef) {
-    if (self._assetdef.getId() === assetdef.getId()) { notifyNeedsUpdate() }
+    if (self._assetdef.getId() === assetdef.getId()) { update() }
   })
 
-  notifyNeedsUpdate()
+  update()
 }
 
 util.inherits(AssetModel, events.EventEmitter)
 
-
-AssetModel.prototype.isUpdating = function () {
-  return this._asyncUpdater.isUpdating()
-}
-
 /**
- * @callback AssetModel~_update
- * @param {?Error} error
+ * @return {Q.Promise}
  */
-
-/**
- * Update current AssetModel
- * @param {AssetModel~_update} cb
- */
-AssetModel.prototype._update = function (cb) {
+AssetModel.prototype._update = function () {
   var self = this
 
-  var moniker = self._assetdef.getMonikers()[0]
-  if (self.props.moniker !== moniker) {
-    self.props.moniker = moniker
-    self.emit('update')
-  }
-
-  var isBitcoin = (self._assetdef.getId() === 'JNu4AFCBNmTE1')
-  var address = self._wallet.getSomeAddress(self._assetdef, !isBitcoin)
-  if (self.props.address !== address) {
-    self.props.address = address
-    self.emit('update')
-  }
-
-  Q.ninvoke(self._wallet, 'getBalance', self._assetdef).then(function (balance) {
+  return Q.ninvoke(self._wallet, 'getBalance', self._assetdef).then(function (balance) {
     var isChanged = false
     function updateBalance(balanceType, value) {
       var formattedValue = self._assetdef.formatValue(value)
@@ -105,12 +106,8 @@ AssetModel.prototype._update = function (cb) {
 
     if (isChanged) { self.emit('update') }
 
-  }).done(function () {
-    cb(null)
-
-  }, function (err) {
-    self.emit('error', err)
-    cb(err)
+  }).catch(function (error) {
+    self.emit('error', error)
 
   })
 }

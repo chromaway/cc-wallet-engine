@@ -21,18 +21,19 @@ describe('HistoryEntryModel', function () {
     wallet.on('error', function (error) { throw error })
     wallet.getWallet().initialize('12355564466111166655222222222222')
 
-    // @todo N
+    wallet.on('historyUpdate', function () { console.log('historyUpdate') })
+
+    wallet.on('syncStop', function () {
+      var entries = wallet.getWallet().getHistory()
+
+      expect(entries).to.be.instanceof(Array).with.to.have.length(1)
+      historyEntry = new HistoryEntryModel(entries[0])
+
+      done()
+    })
+
     wallet.getWallet().subscribeAndSyncAllAddresses(function (error) {
       expect(error).to.be.null
-
-      wallet.getWallet().getHistory(function (error, entries) {
-        expect(error).to.be.null
-
-        expect(entries).to.be.instanceof(Array).with.to.have.length(1)
-        historyEntry = new HistoryEntryModel(entries[0])
-
-        done()
-      })
     })
   })
 

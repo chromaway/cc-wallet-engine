@@ -18,6 +18,13 @@ function HistoryEntryModel(historyEntry) {
 }
 
 /**
+ * @return {cc-wallet-core.history.HistoryEntry}
+ */
+HistoryEntryModel.prototype.getHistoryEntry = function () {
+  return this.historyEntry
+}
+
+/**
  * @return {string}
  */
 HistoryEntryModel.prototype.getTxId = function () {

@@ -2,6 +2,7 @@ var events = require('events')
 var util = require('util')
 
 var _ = require('lodash')
+var SyncMixin = require('cc-wallet-core').SyncMixin
 
 var AssetModel = require('./AssetModel')
 var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
@@ -17,14 +18,23 @@ var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
  */
 
 /**
+ * @event AssetModels#syncStart
+ */
+
+/**
+ * @event AssetModels#syncStop
+ */
+
+/**
  * @class AssetModels
  * @extends events.EventEmitter
- *
+ * @mixins SyncMixin
  * @param {walletEngine} walletEngine
  */
 function AssetModels(walletEngine) {
   var self = this
   events.EventEmitter.call(self)
+  SyncMixin.call(self)
 
   self._models = {}
   self._walletEngine = walletEngine
@@ -34,10 +44,6 @@ function AssetModels(walletEngine) {
 }
 
 util.inherits(AssetModels, events.EventEmitter)
-
-AssetModels.prototype.isUpdating = function () {
-  return _.any(this._models, function (model) { return model.isUpdating() })
-}
 
 /**
  * @param {AssetDefinition} assetdef
@@ -51,11 +57,8 @@ AssetModels.prototype._addAssetModel = function (assetdef) {
   var assetModel = new AssetModel(self._walletEngine, assetdef)
   assetModel.on('error', function (error) { self.emit('error', error) })
   assetModel.on('update', function () { self.emit('update') })
-  // it isn't a problem that these events are emitted more often than necessary
-  // as WalletEngine will be able to detect whether update is still in progress
-  // via isUpdating()
-  assetModel.on('beginUpdating', function () { self.emit('update') })
-  assetModel.on('endUpdating', function () { self.emit('update') })
+  assetModel.on('syncStart', function () { self._syncEnter() })
+  assetModel.on('syncStop', function () { self._syncExit() })
 
   self._models[assetId] = assetModel
 
