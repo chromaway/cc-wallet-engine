@@ -1,6 +1,8 @@
 var util = require('util')
 var make_random_id = require('./Utils').make_random_id
 var equal = require('deep-equal');
+var WalletCore = require('cc-wallet-core');
+var RawTx = WalletCore.tx.RawTx;
 
 
 /**
@@ -122,13 +124,18 @@ MyEProposal.prototype.get_data = function(){
 }
 
 MyEProposal.prototype.process_reply = function(reply_ep){
-  var rtxs = new RawTxSpec.from_tx_data(
-      this.ewctrl.model, reply_ep.etx_data.decode('hex')
-  )
+  var rtxs = RawTx.fromHex(reply_ep.etx_data)
   if(this.ewctrl.check_tx(rtxs, this.etx_spec)){
-    rtxs.sign(this.etx_spec.my_utxo_list)
+    var wallet = this.ewctrl.wallet
+    var seedHex = this.ewctrl.getSeedHex()
+    var cb = function(error){
+      if(error){
+        throw Error("Sign raw tx failed!")
+      }
+    }
+    rtxs.sign(wallet, seedHex, cb)
     this.ewctrl.publish_tx(rtxs, this.my_offer) 
-    this.etx_data = rtxs.get_hex_tx_data()
+    this.etx_data = rtxs.toHex(false)
   } else {
     throw new Error("p2ptrade reply tx check failed")
   }
@@ -138,18 +145,52 @@ MyEProposal.prototype.process_reply = function(reply_ep){
 /**
  * @class MyReplyEProposal
  */
-function MyReplyEProposal(){
-  // TODO implement
+function MyReplyEProposal(ewctrl, foreign_ep, my_offer){
+  EProposal.apply(this, [foreign_ep.pid, ewctrl, foreign_ep.offer])
+  this.my_offer = my_offer
+  this.tx = this.ewctrl.make_reply_tx(
+      foreign_ep.etx_spec, my_offer.A, my_offer.B
+  )
+}
+
+util.inherits(MyReplyEProposal, EProposal)
+
+MyReplyEProposal.prototype.get_data = function(){
+  var data = EProposal.prototype.get_data.apply(this)
+  data['etx_data'] = this.tx.get_hex_tx_data()
+  return data
+}
+
+MyReplyEProposal.prototype.process_reply = function(reply_ep){
+  var rtxs = RawTx.fromHex(reply_ep.etx_data)
+  this.ewctrl.publish_tx(rtxs, this.my_offer)
 }
 
 
 /**
  * @class ForeignEProposal
  */
-function ForeignEProposal(){
-  // TODO implement
+function ForeignEProposal(ewctrl, ep_data){
+  var offer = EOffer.from_data(ep_data['offer'])
+  EProposal.apply(this, [ep_data['pid'], ewctrl, offer])
+  this.etx_spec = undefined
+  if('etx_spec' in ep_data){
+    this.etx_spec = ETxSpec.from_data(ep_data['etx_spec'])
+  }
+  this.etx_data = ep_data['etx_data']
 }
 
+util.inherits(ForeignEProposal, EProposal)
+
+ForeignEProposal.prototype.accept = function(my_offer){
+  if(!this.offer.is_same_as_mine(my_offer)){
+    throw new Error("incompatible offer")
+  }
+  if(!this.etx_spec){
+    throw new Error("need etx_spec")
+  }
+  return new MyReplyEProposal(this.ewctrl, this, my_offer)
+}
 
 module.exports = {
   EOffer: EOffer,

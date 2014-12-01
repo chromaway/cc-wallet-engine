@@ -230,8 +230,9 @@ describe('P2PTrade ProtocolObjects', function(){
       expect(result['etx_spec']).to.be.undefined
     })
 
-    it.skip('process reply', function(){
-      // tested by test.p2ptrade.Agent
+    it('process reply', function(){
+      // TODO test
+      expect(false).to.be.true
     })
 
   })
@@ -241,12 +242,14 @@ describe('P2PTrade ProtocolObjects', function(){
    */
   describe('MyReplyEProposal', function(){
 
-    it.skip('convert to data', function(){
+    it('convert to data', function(){
       // TODO check for 'etx_data'
+      expect(false).to.be.true
     })
 
-    it.skip('process reply', function(){
+    it('process reply', function(){
       // TODO tested by test.p2ptrade.Agent or obsolete
+      expect(false).to.be.true
     })
 
   })
@@ -256,8 +259,9 @@ describe('P2PTrade ProtocolObjects', function(){
    */
   describe('ForeignEProposal', function(){
 
-    it.skip('accept', function(){
-      // tested by test.p2ptrade.Agent
+    it('accept', function(){
+      // TODO test
+      expect(false).to.be.true
     })
 
   })

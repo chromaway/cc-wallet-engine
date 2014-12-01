@@ -56,6 +56,10 @@ describe('P2PTrade EWCtrl', function(){
       // TODO test it
     })
 
+    it('getSeedHex', function(){
+      // TODO test it
+    })
+
   })
 
 })

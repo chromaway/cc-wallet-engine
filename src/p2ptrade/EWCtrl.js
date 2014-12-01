@@ -1,24 +1,29 @@
 var util = require('util')
+var WalletCore = require('cc-wallet-core');
+var OperationalTx = WalletCore.tx.OperationalTx;
 
 
 /**
  * @class OperationalETxSpec
  */
-function OperationalETxSpec(model, ewctrl){
+function OperationalETxSpec(wallet, ewctrl){
+  this.wallet = wallet
   // TODO implement
   throw new Error("Not implemented!")
 }
 
-// TODO util.inherits(OperationalETxSpec, SimpleOperationalTxSpec)
+util.inherits(OperationalETxSpec, OperationalTx);
 
 OperationalETxSpec.prototype.get_targets = function(){
   // TODO implement
   throw new Error("Not implemented!")
 }
 
-OperationalETxSpec.prototype.get_change_addr = function(color_def){
-  // TODO implement
-  throw new Error("Not implemented!")
+OperationalETxSpec.prototype.getChangeAddress = function(colordef){
+  if(colordef.getColorType() !== 'uncolored'){
+    throw new Error('colored change not supported')
+  }
+  return OperationalTx.prototype.getChangeAddress.call(this, colordef)
 }
 
 OperationalETxSpec.prototype.set_our_value_limit = function(our){
@@ -92,6 +97,11 @@ EWalletController.prototype.make_etx_spec = function(our, their){
 }
 
 EWalletController.prototype.make_reply_tx = function(etx_spec, our, their){
+  // TODO implement
+  throw new Error("Not implemented!")
+}
+
+EWalletController.prototype.getSeedHex = function(){
   // TODO implement
   throw new Error("Not implemented!")
 }
