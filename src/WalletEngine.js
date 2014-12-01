@@ -46,6 +46,7 @@ var HistoryEntryModel = require('./HistoryEntryModel')
 function WalletEngine(opts) {
   var self = this
   events.EventEmitter.call(self)
+  self.setMaxListeners(100) // 10 by default, 0 -- unlimited
   SyncMixin.call(self)
 
   opts = _.extend({
@@ -90,17 +91,11 @@ WalletEngine.prototype.setCallback = function (callback) {
 /**
  */
 WalletEngine.prototype._update = function () {
-  var self = this
-
-  if (!self.isSyncing()) {
-    return self._updateCallback()
+  if (this.isSyncing()) {
+    return this.once('syncStop', this._updateCallback.bind(this))
   }
 
-  function onSyncStop() {
-    self.removeListener('syncStop', onSyncStop)
-    self._updateCallback()
-  }
-  self.on('syncStop', onSyncStop)
+  this._updateCallback()
 }
 
 /**
@@ -132,25 +127,22 @@ WalletEngine.prototype._initializeWalletEngine = function () {
 
   self._assetModels = new AssetModels(self)
   self._assetModels.on('error', function (error) { self.emit('error', error) })
+  self._assetModels.on('update', function () { self._update() })
   self._assetModels.on('syncStart', function () { self._syncEnter() })
   self._assetModels.on('syncStop', function () { self._syncExit() })
-  self._assetModels.on('update', function () {
+
+  self._wallet.on('historyUpdate', function () {
+    var entries = self._wallet.getHistory()
+
+    function entryEqualFn(entry, index) { return entry.getHistoryEntry().isEqual(entries[index]) }
+    var isEqual = self._historyEntries.length === entries.length && self._historyEntries.every(entryEqualFn)
+    if (isEqual) { return }
+
+    self._historyEntries = entries.map(function (entry) {
+      return new HistoryEntryModel(entry)
+    }).reverse()
+
     self._update()
-    self._syncEnter()
-    self._wallet.getHistory(function (error, entries) {
-      self._syncExit()
-      if (error) { return }
-
-      function entryEqualFn(entry, index) { return entry.getTxId() === entries[index].getTxId() }
-      var isEqual = self._historyEntries.length === entries.length && self._historyEntries.every(entryEqualFn)
-      if (isEqual) { return }
-
-      self._historyEntries = entries.map(function (entry) {
-        return new HistoryEntryModel(entry)
-      }).reverse()
-
-      self._update()
-    })
   })
 
   function subscribeCallback(error) {
