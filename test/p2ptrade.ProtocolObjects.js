@@ -11,7 +11,7 @@ var MyEProposal = require('../src/p2ptrade').ProtocolObjects.MyEProposal
  * @class MockEWalletController
  */
 function MockEWalletController(){
-  //
+  this.published = []
 }
 
 MockEWalletController.prototype.make_etx_spec = function(inputs, targets){
@@ -19,7 +19,7 @@ MockEWalletController.prototype.make_etx_spec = function(inputs, targets){
 }
 
 MockEWalletController.prototype.publish_tx = function(rtxs, offer){
-  //
+  this.published.push([rtxs, offer])
 }
 
 MockEWalletController.prototype.make_reply_tx = function(A, B){

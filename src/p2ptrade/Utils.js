@@ -42,7 +42,6 @@ HTTPInterface.prototype.post = function(url, content){
   return posted
 }
 
-
 module.exports = {
   make_random_id: make_random_id,
   HTTPInterface: HTTPInterface
