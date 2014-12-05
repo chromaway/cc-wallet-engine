@@ -65,8 +65,7 @@ function WalletEngine(opts) {
   self._wallet.on('syncStart', function () { self._syncEnter() })
   self._wallet.on('syncStop', function () { self._syncExit() })
 
-  // note: we update right away on syncStart, but use debounce
-  // on syncStop
+  // note: we update right away on syncStart, but use debounce on syncStop
   self.on('syncStart', function () { self._updateCallback() })
   self.on('syncStop', function () { self._delayedUpdateCallback() })
 
@@ -99,7 +98,7 @@ WalletEngine.prototype.setCallback = function (callback) {
 WalletEngine.prototype._update = function () {
   // callback is called automatically on syncStop,
   // so we only call callback when not syncing
-  if (! this.isSyncing()) {
+  if (!this.isSyncing()) {
     this._delayedUpdateCallback()
   }
 }

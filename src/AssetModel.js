@@ -55,22 +55,25 @@ function AssetModel(walletEngine, assetdef) {
     totalBalance: ''
   }
 
-  var updateQueue = []
+  var updateState = {isUpdating: false, isStillNeedUpdate: false}
   var update = delayed.debounce(function () {
-    self._syncEnter()
+    if (updateState.isUpdating) {
+      return (updateState.isStillNeedUpdate = true)
+    }
 
-    updateQueue.push(Q.defer())
-    if (updateQueue.length === 1) { updateQueue[0].resolve() }
+    function updateOnce() {
+      updateState.isUpdating = true
+      updateState.isStillNeedUpdate = false
 
-    _.last(updateQueue).promise.then(function () {
-      return self._update()
+      self._update().finally(function () {
+        if (updateState.isStillNeedUpdate) {
+          return updateOnce()
+        }
 
-    }).finally(function () {
-      updateQueue.shift()
-      if (updateQueue.length > 0) { updateQueue[0].resolve() }
-
-      self._syncExit()
-    })
+        updateState.isUpdating = false
+      })
+    }
+    updateOnce()
 
   }, 100)
 
