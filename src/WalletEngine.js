@@ -65,10 +65,35 @@ function WalletEngine(opts) {
   self._wallet.on('syncStart', function () { self._syncEnter() })
   self._wallet.on('syncStop', function () { self._syncExit() })
 
+  // note: can't depend on network.isConnected because it's updated 
+  // via events
+  self._networkIsConnected = self._wallet.network.isConnected()
+  self._wallet.network.on('connect', function () { 
+                            self._networkIsConnected = true
+                            self._update() 
+  })
+  self._wallet.network.on('disconnect', function () { 
+                            self._networkIsConnected = false
+                            self._update() 
+  })
+
+  // note: we update right away on syncStart, but use debounce on syncStop
+  self.on('syncStart', function () { self._updateCallback() })
+  self.on('syncStop', function () { self._delayedUpdateCallback() })
+
   if (self._wallet.isInitialized()) { self._initializeWalletEngine() }
 }
 
 util.inherits(WalletEngine, events.EventEmitter)
+
+
+WalletEngine.prototype.isConnected = function () {
+  return this._networkIsConnected
+}
+
+WalletEngine.prototype.isUpdating = function () {
+  return (!this.isConnected()) || this.isSyncing()
+}
 
 /**
  * @return {Wallet}
@@ -85,17 +110,18 @@ WalletEngine.prototype.getWallet = function () {
  * @param {WalletEngine~setCallback} callback
  */
 WalletEngine.prototype.setCallback = function (callback) {
-  this._updateCallback = delayed.debounce(callback, 100)
+  this._updateCallback = callback
+  this._delayedUpdateCallback = delayed.debounce(callback, 100)
 }
 
 /**
  */
 WalletEngine.prototype._update = function () {
-  if (this.isSyncing()) {
-    return this.once('syncStop', this._updateCallback.bind(this))
+  // callback is called automatically on syncStop,
+  // so we only call callback when not syncing
+  if (!this.isSyncing()) {
+    this._delayedUpdateCallback()
   }
-
-  this._updateCallback()
 }
 
 /**

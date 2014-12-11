@@ -23,6 +23,9 @@ function PaymentRequestModel(wallet, assetdef, props) {
 
   if (_.isUndefined(props.address)) {
     props.address = wallet.getSomeAddress(assetdef, false)
+  } else {
+    // need uncolored address
+    props.address = wallet.getBitcoinAddress(assetdef, props.address)
   }
 
   if (_.isUndefined(props.cwpp_host)) {
