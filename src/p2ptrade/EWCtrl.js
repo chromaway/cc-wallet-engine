@@ -98,14 +98,15 @@ OperationalETxSpec.prototype.prepare_targets = function(etx_spec, their){
 OperationalETxSpec.prototype.select_uncolored_coins = function(
       colorvalue, feeEstimator
     ){
-  var zero = new ColorValue({ 
+  var zero = new ColorValue({
     colordef: new UncoloredColorDefinition(), value: 0
   })
   var selected_inputs = []
   var selected_value = zero.clone()
   var needed = zero.clone()
   if(feeEstimator){
-    needed = colorvalue.plus(feeEstimator.estimate_required_fee())
+    // FIXME give feeEstimator required args!
+    needed = colorvalue.plus(feeEstimator.estimateRequiredFee())
   } else {
     needed = colorvalue
   }
@@ -123,7 +124,7 @@ OperationalETxSpec.prototype.select_uncolored_coins = function(
     selected_value = selected_value.plus(total)
   }
   if(needed.getValue() > 0){
-    var value_limit = new ColorValue({ 
+    var value_limit = new ColorValue({
       colordef: new UncoloredColorDefinition(), value: 10000+8192*2
     })
     if(this.our_value_limit.isUncolored()){
@@ -131,7 +132,7 @@ OperationalETxSpec.prototype.select_uncolored_coins = function(
     }
     if(needed.getValue() > value_limit.getValue()){
       throw new Error(
-          "Insufficient Funds, exceeded limits: " + needed + 
+          "Insufficient Funds, exceeded limits: " + needed +
           " requested, " + value_limit + " found" % (needed, value_limit)
       )
     }
@@ -146,23 +147,6 @@ OperationalETxSpec.prototype.select_uncolored_coins = function(
     )
   }
   return [selected_inputs, selected_value]
-}
-
-OperationalETxSpec.prototype.select_coins = function(colorvalue, feeEstimator){
-  var result = []
-  var error = undefined
-  var cb = function(err, coins, value){
-    result.push(coins)
-    result.push(value)
-    error = err
-  }
-  OperationalETxSpec.prototype.selectCoins.call(
-      self, colorvalue, feeEstimator, cb
-  )
-  if(error){
-    throw new Error(error)
-  }
-  return result
 }
 
 OperationalETxSpec.prototype.selectCoins = function(colorValue, feeEstimator, cb){
@@ -182,7 +166,7 @@ OperationalETxSpec.prototype.selectCoins = function(colorValue, feeEstimator, cb
     }
     if(total.getValue() < colorValue.getValue()){
       var err = (
-          "Insufficient funds, not enough coins: " + colorValue + 
+          "Insufficient funds, not enough coins: " + colorValue +
           " requested, " + total + " found"
       )
       cb(err, undefined, undefined)
@@ -198,7 +182,7 @@ OperationalETxSpec.prototype.selectCoins = function(colorValue, feeEstimator, cb
   }
   if(colorValue.getValue() > this.our_value_limit.getValue()){
     var err = (
-        "Insufficient funds " + colorValue + " requested, " + 
+        "Insufficient funds " + colorValue + " requested, " +
         this.our_value_limit + " found"
     )
     cb(err, undefined, undefined)
@@ -246,9 +230,38 @@ EWalletController.prototype.offer_side_to_colorvalue = function(side){
   return new ColorValue({colordef: colordef, value: side['value']})
 }
 
-EWalletController.prototype.select_inputs = function(colorvalue){
-  // TODO implement
-  throw new Error("Not implemented!")
+EWalletController.prototype.selectInputs = function(colorvalue, cb){
+  var optx = new OperationalTx(self.wallet)
+  if(colorvalue.isUncolored()){
+    var feeEstimator = null // TODO use feeEstimator
+    optx.selectCoins(colorvalue, feeEstimator, function(err, selection, total){
+      if(err){
+        cb(err)
+      } else {
+        var change = total - colorvalue
+        if(feeEstimator){
+          change = change - feeEstimator.estimateRequiredFee({ 
+            extraTxIns: selection.length 
+          })
+        }
+        if(change < optx.getDustThreshold()){
+          var change = new ColorValue({
+            colordef: new UncoloredColorDefinition(), value: 0
+          })
+        }
+        cb(null, selection, change)
+      }
+    }
+  } else {
+    optx.selectCoins(colorvalue, null, function(err, selection, total){
+      if(err){
+        cb(err)
+      } else {
+        change = total - colorvalue
+        cb(err, selection, change)
+      }
+    }
+  }
 }
 
 EWalletController.prototype.make_etx_spec = function(our, their){
