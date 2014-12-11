@@ -157,7 +157,7 @@ util.inherits(MyReplyEProposal, EProposal)
 
 MyReplyEProposal.prototype.get_data = function(){
   var data = EProposal.prototype.get_data.apply(this)
-  data['etx_data'] = this.tx.get_hex_tx_data()
+  data['etx_data'] = this.tx.toHex()
   return data
 }
 

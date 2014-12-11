@@ -17,6 +17,48 @@ function MockWallet(){
 describe('P2PTrade EWCtrl', function(){
 
   /**
+   * Test OperationalETxSpec
+   */
+  describe('OperationalETxSpec', function(){
+
+    it('get_targets', function(){
+      // TODO test it
+      expect(false).to.be.true
+    })
+
+    it('getChangeAddress', function(){
+      // TODO test it
+      expect(false).to.be.true
+    })
+
+    it('set_our_value_limit', function(){
+      // TODO test it
+      expect(false).to.be.true
+    })
+
+    it('prepare_inputs', function(){
+      // TODO test it
+      expect(false).to.be.true
+    })
+
+    it('prepare_targets', function(){
+      // TODO test it
+      expect(false).to.be.true
+    })
+
+    it('select_uncolored_coins', function(){
+      // TODO test it
+      expect(false).to.be.true
+    })
+
+    it('select_coins', function(){
+      // TODO test it
+      expect(false).to.be.true
+    })
+
+  })
+
+  /**
    * Test EWalletController
    */
   describe('EWalletController', function(){

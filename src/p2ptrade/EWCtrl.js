@@ -2,16 +2,19 @@ var util = require('util')
 var WalletCore = require('cc-wallet-core');
 var OperationalTx = WalletCore.tx.OperationalTx;
 var ColorValue = WalletCore.cclib.ColorValue;
+var EPOBCColorDefinition = WalletCore.cclib.EPOBCColorDefinition;
 var UncoloredColorDefinition = WalletCore.cclib.UncoloredColorDefinition
 var Set = require('set')
-var bitcoin = require('./bitcoin')
+
+var bitcoin = WalletCore.bitcoin
+
+// TODO color_spec -> colorDesc
 
 /**
  * @class OperationalETxSpec
  */
-function OperationalETxSpec(wallet, ewctrl){
+function OperationalETxSpec(ewctrl){
   OperationalTx.call(this)
-  this.wallet = wallet
   this.ewctrl = ewctrl
   this.our_value_limit = undefined
 }
@@ -24,7 +27,7 @@ OperationalETxSpec.prototype.get_targets = function(){
 
 OperationalETxSpec.prototype.getChangeAddress = function(colordef) {
   var seedHex = ewctrl.getSeedHex()
-  return this.wallet.getNewAddress(seedHex, colordef)
+  return this.ewctrl.wallet.getNewAddress(seedHex, colordef)
 }
 
 OperationalETxSpec.prototype.get_change_address = function(colordef){
@@ -59,12 +62,12 @@ OperationalETxSpec.prototype.prepare_inputs = function(etx_spec){
         colorvalue = new ColorValue({colordef: colordef, value: prevout.value})
       } else {
         var colordata = this.ewctrl.wallet.getColorData()
-        colordata.getColorValue(txhash, outindex, colordef, function(e, cv{
+        colordata.getColorValue(txhash, outindex, colordef, function(e, cv){
           colorvalue = cv
         })
       }
       if(colorvalue){
-        if(!this.inputs[colordef.getColorId()){
+        if(!this.inputs[colordef.getColorId()]){
           this.inputs[colordef.getColorId()] = []
         }
         this.inputs[colordef.getColorId()].push([colorvalue, utxo])
@@ -213,8 +216,20 @@ function EWalletController(wallet, seedHex){
 }
 
 EWalletController.prototype.publish_tx = function(raw_tx, my_offer){
-  // TODO implement
-  throw new Error("Not implemented!")
+
+  // add to history
+  // TODO history trade entry not implemented ?
+  // this.wallet.historyManager
+
+  // publish transaction
+  var published = true
+  var tx = raw_tx.toTransaction(false)
+  this.wallet.sendTx(tx, function(err){
+    if (err){
+      published = false
+    }
+  })
+  return published
 }
 
 EWalletController.prototype.check_tx = function(raw_tx, etx_spec){
@@ -223,13 +238,12 @@ EWalletController.prototype.check_tx = function(raw_tx, etx_spec){
 }
 
 EWalletController.prototype.resolve_color_spec = function(color_spec){
-  // TODO implement
-  throw new Error("Not implemented!")
+  return this.walled.cdManager.resolveByDesc(colorDesc, false);
 }
 
 EWalletController.prototype.offer_side_to_colorvalue = function(side){
-  // TODO implement
-  throw new Error("Not implemented!")
+  var colordef = this.resolve_color_spec(side['color_spec'])
+  return new ColorValue({colordef: colordef, value: side['value']})
 }
 
 EWalletController.prototype.select_inputs = function(colorvalue){
@@ -243,8 +257,22 @@ EWalletController.prototype.make_etx_spec = function(our, their){
 }
 
 EWalletController.prototype.make_reply_tx = function(etx_spec, our, their){
-  // TODO implement
-  throw new Error("Not implemented!")
+  var self = this
+  var signed_tx = null
+  var op_tx_spec = new OperationalETxSpec(this)
+  op_tx_spec.set_our_value_limit(our)
+  op_tx_spec.prepare_inputs(ext_spec)
+  op_tx_spec.prepare_targets(etx_spec, their)
+  EPOBCColorDefinition.makeComposedTx(op_tx_spec, function (err, ctx) {
+    if(!err){
+      self.wallet.transformTx(ctx, 'signed', this.seedHex, function(err, stx){
+        if(!err){
+          signed_tx = stx
+        }
+      })
+    }
+  });
+  return signed_tx
 }
 
 EWalletController.prototype.getSeedHex = function(){
