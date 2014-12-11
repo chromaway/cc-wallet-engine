@@ -87,7 +87,6 @@ OperationalETxSpec.prototype.prepare_targets = function(etx_spec, their){
     var targetScript = bitcoin.Address.fromBase58Check(address).toOutputScript()
     this.targets.push(new ColorTarget(targetScript.toHex(), colorvalue))
   }
-  var wam = this.ewctrl.wallet.aManager
   var their_colordef = this.ewctrl.resolve_color_spec(their['color_spec'])
   var address = this.getChangeAddress(colordef)
   var targetScript = bitcoin.Address.fromBase58Check(address).toOutputScript()
@@ -265,8 +264,42 @@ EWalletController.prototype.selectInputs = function(colorvalue, cb){
 }
 
 EWalletController.prototype.make_etx_spec = function(our, their){
-  // TODO implement
-  throw new Error("Not implemented!")
+  var our_color_def = this.resolve_color_spec(our['color_spec'])
+  var their_color_def = this.resolve_color_spec(their['color_spec'])
+
+  var extra_value = 0
+  if(colordef.getColorType() === "uncolored"){
+      // pay fee + padding for one colored outputs
+      extra_value = 10000 + 8192 * 1
+  }
+
+  var c_utxos = null
+  var c_change = null
+  var value = our['value'] + extra_value
+  c_utxos, c_change = this.selectInputs(
+    new ColorValue({colordef: our_color_def, value: value}),
+    function(err, selection, change){
+      c_utxos = selection
+      c_change = change
+    }
+  )
+
+  var inputs = {our['color_spec']: []}
+  for(i=0; i < c_utxos.length; i++){
+    inputs[our['color_spec']].push(c_utxos[i].get_outpoint())
+  }
+
+  var address = this.getChangeAddress(our_color_def).get_address()
+  var spec = their['color_spec']
+  var value = their['value']
+  var targets = [[address, spec, value]]
+  if(c_change.getValue() > 0){
+    var address = this.getChangeAddress(our_color_def).get_address()
+    var spec = our['color_spec']
+    var value = c_change.get_value()
+    targets.push([address, spec, value])
+  }
+  return new ETxSpec(inputs, targets, c_utxos)
 }
 
 EWalletController.prototype.make_reply_tx = function(etx_spec, our, their){
