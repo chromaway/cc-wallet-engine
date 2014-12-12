@@ -5,23 +5,26 @@ var sinon = require('sinon') // use sinon to test ajax, see http://sinonjs.org/
 /**
  * Test P2PTrade utils
  */
-describe.skip('P2PTrade utils', function(){
+describe('P2PTrade utils', function(){
 
   /**
    * Test make_random_id
    */
-  describe.skip('make_random_id', function(){
+  describe('make_random_id', function(){
 
-    it.skip('is random', function(){
+    it('is random', function(){
       // TODO test it
+      expect(false).to.be.true
     })
 
-    it.skip('8 bytes of entropy', function(){
+    it('8 bytes of entropy', function(){
       // TODO test it
+      expect(false).to.be.true
     })
 
-    it.skip('is hex str', function(){
+    it('is hex str', function(){
       // TODO test it
+      expect(false).to.be.true
     })
 
   })
@@ -29,14 +32,40 @@ describe.skip('P2PTrade utils', function(){
   /**
    * Test HTTPInterface
    */
-  describe.skip('HTTPInterface', function(){
+  describe('HTTPInterface', function(){
 
-    it.skip('poll', function(){
+    it('poll', function(){
       // TODO test it
+      expect(false).to.be.true
     })
 
-    it.skip('post', function(){
+    it('post', function(){
       // TODO test it
+      expect(false).to.be.true
+    })
+
+  })
+
+  /**
+   * Test dictValues
+   */
+  describe('dictionary', function(){
+
+    it('dictValues', function(){
+      // TODO test it
+      expect(false).to.be.true
+    })
+
+  })
+
+  /**
+   * Test unixTime
+   */
+  describe('unixTime', function(){
+
+    it('unixTime', function(){
+      // TODO test it
+      expect(false).to.be.true
     })
 
   })

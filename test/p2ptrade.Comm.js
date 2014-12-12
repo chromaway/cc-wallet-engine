@@ -60,9 +60,9 @@ describe('P2PTrade Comm', function(){
 
     it('add agent', function(){
       comm = new CommBase()
-      comm.add_agent("a")
+      comm.addAgent("a")
       expect(comm.agents).to.deep.equal(["a"])
-      comm.add_agent("b")
+      comm.addAgent("b")
       expect(comm.agents).to.deep.equal(["a", "b"])
     })
 
@@ -82,7 +82,7 @@ describe('P2PTrade Comm', function(){
       http_interface = new MockHTTPInterface()
       comm.http_interface = http_interface
       agent = new MockAgent()
-      comm.add_agent(agent)
+      comm.addAgent(agent)
     })
 
     it('post message content', function(){

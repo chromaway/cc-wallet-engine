@@ -42,6 +42,19 @@ HTTPInterface.prototype.post = function(url, content){
   return posted
 }
 
+function dictValues(dictionary){
+  var values = [];
+  Object.keys(directory).forEach(function (key){
+    values.push(dictionary[key])
+  })
+  return values
+}
+
+function unixTime(){
+  var date = new Date()
+  return date.getTime() / 1000
+}
+
 module.exports = {
   make_random_id: make_random_id,
   HTTPInterface: HTTPInterface

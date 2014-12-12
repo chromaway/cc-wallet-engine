@@ -3,6 +3,7 @@ var make_random_id = require('./Utils').make_random_id
 var equal = require('deep-equal');
 var WalletCore = require('cc-wallet-core');
 var RawTx = WalletCore.tx.RawTx;
+var unixTime = require('./Utils').unixTime
 
 
 /**
@@ -24,15 +25,11 @@ EOffer.prototype.expired = function(){
 }
 
 EOffer.prototype.expired_shift = function(shift){
-  var date = new Date()
-  var seconds = date.getTime() / 1000
-  return !!((!this.expires) || (this.expires < (seconds + shift)))
+  return !!((!this.expires) || (this.expires < (unixTime() + shift)))
 }
 
 EOffer.prototype.refresh = function(delta){
-  var date = new Date()
-  var seconds = date.getTime() / 1000
-  this.expires = seconds + delta
+  this.expires = unixTime() + delta
 }
 
 EOffer.prototype.is_same_as_mine = function(my_offer){
@@ -125,7 +122,7 @@ MyEProposal.prototype.get_data = function(){
 
 MyEProposal.prototype.process_reply = function(reply_ep){
   var rtxs = RawTx.fromHex(reply_ep.etx_data)
-  if(this.ewctrl.check_tx(rtxs, this.etx_spec)){
+  if(this.ewctrl.checkTx(rtxs, this.etx_spec)){
     var wallet = this.ewctrl.wallet
     var seedHex = this.ewctrl.getSeedHex()
     var cb = function(error){

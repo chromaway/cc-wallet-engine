@@ -11,7 +11,7 @@ function CommBase(){
   this.agents = []
 }
 
-CommBase.prototype.add_agent = function(agent){
+CommBase.prototype.addAgent = function(agent){
   this.agents.push(agent)
   return true
 }

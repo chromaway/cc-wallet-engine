@@ -215,9 +215,64 @@ EWalletController.prototype.publish_tx = function(raw_tx, my_offer){
   return published
 }
 
-EWalletController.prototype.check_tx = function(raw_tx, etx_spec){
-  // TODO implement
-  throw new Error("Not implemented!")
+/**
+ * Check if raw tx satisfies spec's targets.
+ */
+EWalletController.prototype.checkTx = function(raw_tx, etx_spec){
+  return true // FIXME implement!!!
+
+  // bctx = bitcoin.core.CTransaction.deserialize(raw_tx.get_tx_data())
+  // ctx = CTransaction.from_bitcoincore(
+  //     raw_tx.get_hex_txhash(),
+  //     bctx,
+  //     self.model.ccc.blockchain_state
+  // )
+  // 
+  // color_id_set = set([])
+  // targets = []
+  // for target in etx_spec.targets:
+  //     our_address, color_spec, value = target
+  //     raw_addr = CBitcoinAddress(our_address)
+  //     color_def = self.resolve_color_spec(color_spec)
+  //     color_id = color_def.get_color_id()
+  //     color_id_set.add(color_id)
+  //     targets.append((raw_addr, color_id, value))
+  // 
+  // used_outputs = set([])
+  // satisfied_targets = set([])
+  // 
+  // for color_id in color_id_set:
+  //     if color_id == 0:
+  //         continue
+  //     out_colorvalues = self.model.ccc.colordata.get_colorvalues_raw(
+  //         color_id, ctx)
+  //     print out_colorvalues
+  //     for oi in range(len(ctx.outputs)):
+  //         if oi in used_outputs:
+  //             continue
+  //         if out_colorvalues[oi]:
+  //             for target in targets:
+  //                 if target in satisfied_targets:
+  //                     continue
+  //                 raw_address, tgt_color_id, value = target
+  //                 if ((tgt_color_id == color_id) and
+  //                     (value == out_colorvalues[oi].get_value()) and
+  //                     (raw_address == ctx.outputs[oi].raw_address)):
+  //                         satisfied_targets.add(target)
+  //                         used_outputs.add(oi)
+  // for target in targets:
+  //     if target in satisfied_targets:
+  //         continue
+  //     raw_address, tgt_color_id, value = target
+  //     if tgt_color_id == 0:
+  //         for oi in range(len(ctx.outputs)):
+  //             if oi in used_outputs:
+  //                 continue
+  //             if ((value == ctx.outputs[oi].value) and
+  //                 (raw_address == ctx.outputs[oi].raw_address)):
+  //                 satisfied_targets.add(target)
+  //                 used_outputs.add(oi)
+  // return len(targets) == len(satisfied_targets)
 }
 
 EWalletController.prototype.resolve_color_spec = function(color_spec){
