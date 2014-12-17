@@ -1,6 +1,8 @@
 var assert = require('assert')
 var dictValues = require('./Utils').dictValues
 var unixTime = require('./Utils').unixTime
+var MyEProposal = require('./ProtocolObjects').MyEProposal
+var ForeignEProposal = require('./ProtocolObjects').ForeignEProposal
 
 /**
  * Implements high-level exchange logic
@@ -34,7 +36,6 @@ EAgent.prototype.fire_event = function(event_type, data){
 EAgent.prototype.set_active_ep = function(ep){
   if(!ep){
     this.ep_timeout = null
-    this.match_orders = true
   } else {
     var interval = this.config['ep_expiry_interval'] 
     this.ep_timeout = unixTime() + interval
@@ -54,7 +55,7 @@ EAgent.prototype.service_my_offers = function(){
   var my_offers_values = []
   dictValues(self.my_offers).forEach(function (my_offer){
     if(my_offer.auto_post){
-      if(not my_offer.expired()){
+      if(!my_offer.expired()){
         return
       }
       if(self.active_ep && self.active_ep.my_offer.oid == my_offer.oid){
@@ -78,15 +79,6 @@ EAgent.prototype.service_their_offers = function(){
   })
 }
 
-EAgent.prototype._update_state = function(){
-  if(!this.has_active_ep() && this.offers_updated){
-    this.offers_updated = false
-    this.match_offers()
-  }
-  this.service_my_offers()
-  this.service_their_offers()
-}
-
 EAgent.prototype.register_my_offer = function(offer){
   this.my_offers[offer.oid] = offer
   this.offers_updated = true
@@ -95,9 +87,10 @@ EAgent.prototype.register_my_offer = function(offer){
 }
 
 EAgent.prototype.cancel_my_offer = function(offer){
-  var offer_oid = this.active_ep.offer.oid
-  var my_offer_oid = this.active_ep.my_offer.oid
-  if(this.active_ep && (offer_oid == offer.oid || my_offer_oid == offer.oid)){
+  if(this.active_ep && (
+        this.active_ep.offer.oid == offer.oid || 
+        this.active_ep.my_offer.oid == offer.oid)
+      ){
     this.set_active_ep(null)
   }
   if(offer.oid in this.my_offers){
@@ -116,18 +109,19 @@ EAgent.prototype.register_their_offer = function(offer){
 
 EAgent.prototype.match_offers = function(){
   var self = this
-  if(this.has_active_ep()){
-    return
+  if(self.has_active_ep()){
+    return false
   }
   var success = false
-  dictValues(this.my_offers).forEach(function (my_offer) {
-    dictValues(this.their_offers).forEach(function(their_offer){
+  dictValues(self.my_offers).forEach(function (my_offer) {
+    dictValues(self.their_offers).forEach(function(their_offer){
       if(!success && my_offer.matches(their_offer)){
         self.make_exchange_proposal(their_offer, my_offer)
         success = true
       }
     })
   })
+  return success
 }
 
 EAgent.prototype.make_exchange_proposal = function(orig_offer, my_offer){
@@ -153,7 +147,7 @@ EAgent.prototype.dispatch_exchange_proposal = function(ep_data){
   }
   // We have neither an offer nor a proposal matching
   //  this ExchangeProposal
-  if(ep.offer.id in this.their_offers){
+  if(ep.offer.oid in this.their_offers){
     // remove offer if it is in-work
     delete this.their_offers[ep.offer.oid]
   }
@@ -173,16 +167,16 @@ EAgent.prototype.accept_exchange_proposal = function(ep){
 }
 
 EAgent.prototype.clear_orders = function(ep){
-  self.fire_event('trade_complete', ep)
+  this.fire_event('trade_complete', ep)
   if(ep instanceof MyEProposal){
     if(ep.my_offer){
-      delete self.my_offers[ep.my_offer.oid]
+      delete this.my_offers[ep.my_offer.oid]
     }
-    delete self.their_offers[ep.offer.oid]
+    delete this.their_offers[ep.offer.oid]
   } else {
-    delete self.my_offers[ep.offer.oid]
+    delete this.my_offers[ep.offer.oid]
   }
-  this.fire_event('offers_updated', None)
+  this.fire_event('offers_updated', null)
 }
 
 EAgent.prototype.update_exchange_proposal = function(ep){
@@ -191,10 +185,9 @@ EAgent.prototype.update_exchange_proposal = function(ep){
     throw new Error("Wrong pid")
   }
   my_ep.process_reply(ep)
-  if(isinstance(my_ep, MyEProposal)){
+  if(my_ep instanceof MyEProposal){
     this.post_message(my_ep)
   }
-  // my_ep.broadcast()
   this.clear_orders(my_ep)
   this.set_active_ep(null)
 }
@@ -213,7 +206,12 @@ EAgent.prototype.dispatch_message = function(content){
 
 EAgent.prototype.update = function(){
   this.comm.poll_and_dispatch()
-  this._update_state()
+  if(!this.has_active_ep() && this.offers_updated){
+    this.offers_updated = false
+    this.match_offers()
+  }
+  this.service_my_offers()
+  this.service_their_offers()
 }
 
 module.exports = {

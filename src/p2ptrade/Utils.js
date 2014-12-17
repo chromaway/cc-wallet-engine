@@ -42,9 +42,13 @@ HTTPInterface.prototype.post = function(url, content){
   return posted
 }
 
+function dictLength(dictionary){
+  return Object.keys(dictionary).length
+}
+
 function dictValues(dictionary){
   var values = [];
-  Object.keys(directory).forEach(function (key){
+  Object.keys(dictionary).forEach(function (key){
     values.push(dictionary[key])
   })
   return values
@@ -57,6 +61,9 @@ function unixTime(){
 
 module.exports = {
   make_random_id: make_random_id,
+  unixTime: unixTime,
+  dictValues: dictValues,
+  dictLength: dictLength,
   HTTPInterface: HTTPInterface
 }
 

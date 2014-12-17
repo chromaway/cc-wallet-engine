@@ -285,9 +285,9 @@ EWalletController.prototype.offer_side_to_colorvalue = function(side){
 }
 
 EWalletController.prototype.selectInputs = function(colorvalue, cb){
-  var optx = new OperationalTx(self.wallet)
+  var optx = new OperationalTx(this.wallet)
   if(colorvalue.isUncolored()){
-    var feeEstimator = null // TODO use feeEstimator
+    var feeEstimator = null // FIXME use feeEstimator
     optx.selectCoins(colorvalue, feeEstimator, function(err, selection, total){
       if(err){
         cb(err)
@@ -305,7 +305,7 @@ EWalletController.prototype.selectInputs = function(colorvalue, cb){
         }
         cb(null, selection, change)
       }
-    }
+    })
   } else {
     optx.selectCoins(colorvalue, null, function(err, selection, total){
       if(err){
@@ -314,7 +314,7 @@ EWalletController.prototype.selectInputs = function(colorvalue, cb){
         change = total - colorvalue
         cb(err, selection, change)
       }
-    }
+    })
   }
 }
 
@@ -339,9 +339,10 @@ EWalletController.prototype.make_etx_spec = function(our, their){
     }
   )
 
-  var inputs = {our['color_spec']: []}
+  var our_color_spec = our['color_spec']
+  var inputs = {our_color_spec: []}
   for(i=0; i < c_utxos.length; i++){
-    inputs[our['color_spec']].push(c_utxos[i].get_outpoint())
+    inputs[our_color_spec].push(c_utxos[i].get_outpoint())
   }
 
   var address = this.getChangeAddress(our_color_def).get_address()
@@ -350,7 +351,7 @@ EWalletController.prototype.make_etx_spec = function(our, their){
   var targets = [[address, spec, value]]
   if(c_change.getValue() > 0){
     var address = this.getChangeAddress(our_color_def).get_address()
-    var spec = our['color_spec']
+    var spec = our_color_spec
     var value = c_change.get_value()
     targets.push([address, spec, value])
   }

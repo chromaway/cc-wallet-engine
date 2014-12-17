@@ -1,5 +1,7 @@
 var expect = require('chai').expect
 var sinon = require('sinon') // use sinon to test ajax, see http://sinonjs.org/
+var unixTime = require('../src/p2ptrade').Utils.unixTime
+var dictValues = require('../src/p2ptrade').Utils.dictValues
 
 
 /**
@@ -52,8 +54,9 @@ describe('P2PTrade utils', function(){
   describe('dictionary', function(){
 
     it('dictValues', function(){
-      // TODO test it
-      expect(false).to.be.true
+      var expected = [1,2,3]
+      var result = dictValues({a:1,b:2,c:3})
+      expect(result.sort()).to.deep.equal(expected.sort())
     })
 
   })
@@ -63,11 +66,13 @@ describe('P2PTrade utils', function(){
    */
   describe('unixTime', function(){
 
-    it('unixTime', function(){
-      // TODO test it
-      expect(false).to.be.true
+    it('has correct type', function(){
+      expect(typeof(unixTime())).to.deep.equal("number")
     })
 
+    it('no time traveling', function(){
+      expect(unixTime() > 1400000000.0).to.be.true
+    })
   })
 
 })
