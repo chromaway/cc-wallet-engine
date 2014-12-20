@@ -44,7 +44,6 @@ OperationalETxSpec.prototype.prepare_inputs = function(etx_spec){
   for (var color_spec in etx_spec.inputs) {
     var inps = etx_spec.inputs[key]
     var colordef = this.ewctrl.resolve_color_spec(color_spec)
-    var color_id_set = new Set([colordef.get_color_id()])
     for(i = 0; i < inps.length; i++){
       var inp = inps[i]
       var txhash = inp[0]
@@ -217,66 +216,86 @@ EWalletController.prototype.publish_tx = function(raw_tx, my_offer){
 
 /**
  * Check if raw tx satisfies spec's targets.
+ * @param src_etx_spec: from MyEProposal
+ * @param raw_tx: from ForeignEProposal
  */
-EWalletController.prototype.checkTx = function(raw_tx, etx_spec){
-  return true // FIXME implement!!!
+EWalletController.prototype.checkTx = function(raw_tx, src_etx_spec){
+  var self = this
 
-  // bctx = bitcoin.core.CTransaction.deserialize(raw_tx.get_tx_data())
-  // ctx = CTransaction.from_bitcoincore(
-  //     raw_tx.get_hex_txhash(),
-  //     bctx,
-  //     self.model.ccc.blockchain_state
-  // )
-  // 
-  // color_id_set = set([])
-  // targets = []
-  // for target in etx_spec.targets:
-  //     our_address, color_spec, value = target
-  //     raw_addr = CBitcoinAddress(our_address)
-  //     color_def = self.resolve_color_spec(color_spec)
-  //     color_id = color_def.get_color_id()
-  //     color_id_set.add(color_id)
-  //     targets.append((raw_addr, color_id, value))
-  // 
-  // used_outputs = set([])
-  // satisfied_targets = set([])
-  // 
-  // for color_id in color_id_set:
-  //     if color_id == 0:
-  //         continue
-  //     out_colorvalues = self.model.ccc.colordata.get_colorvalues_raw(
-  //         color_id, ctx)
-  //     print out_colorvalues
-  //     for oi in range(len(ctx.outputs)):
-  //         if oi in used_outputs:
-  //             continue
-  //         if out_colorvalues[oi]:
-  //             for target in targets:
-  //                 if target in satisfied_targets:
-  //                     continue
-  //                 raw_address, tgt_color_id, value = target
-  //                 if ((tgt_color_id == color_id) and
-  //                     (value == out_colorvalues[oi].get_value()) and
-  //                     (raw_address == ctx.outputs[oi].raw_address)):
-  //                         satisfied_targets.add(target)
-  //                         used_outputs.add(oi)
-  // for target in targets:
-  //     if target in satisfied_targets:
-  //         continue
-  //     raw_address, tgt_color_id, value = target
-  //     if tgt_color_id == 0:
-  //         for oi in range(len(ctx.outputs)):
-  //             if oi in used_outputs:
-  //                 continue
-  //             if ((value == ctx.outputs[oi].value) and
-  //                 (raw_address == ctx.outputs[oi].raw_address)):
-  //                 satisfied_targets.add(target)
-  //                 used_outputs.add(oi)
-  // return len(targets) == len(satisfied_targets)
+  var bctx = bitcoin.core.CTransaction.deserialize(raw_tx.get_tx_data())
+  var txhash = raw_tx.get_hex_txhash()
+  var blockchain_state = self.model.ccc.blockchain_state
+  var ctx = CTransaction.from_bitcoincore(txhash, bctx, blockchain_state)
+  
+  var src_tragets = []
+  var src_color_id_set = new Set([])
+  var used_outputs = new Set([])
+  var satisfied_src_targets = new Set([])
+
+  // populate src_tragets and src_color_id_set
+  src_etx_spec.targets.forEach(function (target) {
+    var raw_addr = CBitcoinAddress(target[0])
+    var src_color_id = self.resolve_color_spec(target[0]).get_color_id()
+    var src_color_id_set.add(src_color_id)
+    src_tragets.push([raw_addr, src_color_id, target[2]]) 
+  }
+  
+  // find satisfied colored coin targets
+  src_color_id_set.get().forEach(function (src_color_id){
+    if(src_color_id == 0){
+      return // skip uncolored
+    }
+    var out_colorvalues = self.model.ccc.colordata.get_colorvalues_raw(src_color_id, ctx)
+    for(oi = 0; oi < ctx.outputs.length; oi++){
+      if(used_outputs.contains(oi)){
+        return // skip used outputs
+      }
+      if(out_colorvalues[oi]){
+        src_tragets.forEach(function (target){
+          if(satisfied_src_targets.contains(target)){
+            return // skip already satisfied
+          }
+          var raw_address = target[0]
+          var tgt_color_id = target[1]
+          var value = target[2]
+          if((tgt_color_id == src_color_id) &&
+             (value == out_colorvalues[oi].get_value()) &&
+             (raw_address == ctx.outputs[oi].raw_address)){
+            satisfied_src_targets.add(target)
+            used_outputs.add(oi)
+          }
+        }
+      }
+    }
+  }
+
+  // find satisfied uncolored coin targets
+  src_tragets.forEach(function (target){
+    raw_address = target[0]
+    tgt_color_id = target[1]
+    value = target[2]
+    if(tgt_color_id != 0){
+      return // skip colored outputs
+    }
+    if(satisfied_src_targets.contains(target)){
+      return // skip already satisfied
+    }
+    for(oi = 0; oi < ctx.outputs.length; oi++){
+      if(used_outputs.contains(oi)){
+        continue // skip used outputs
+      }
+      if((value == ctx.outputs[oi].value) &&
+         (raw_address == ctx.outputs[oi].raw_address)){
+        satisfied_src_targets.add(target)
+        used_outputs.add(oi)
+      }
+    }
+  }
+  return src_tragets.length == satisfied_src_targets.size
 }
 
 EWalletController.prototype.resolve_color_spec = function(color_spec){
-  return this.walled.cdManager.resolveByDesc(colorDesc, false);
+  return this.wallet.cdManager.resolveByDesc(colo_spec, false);
 }
 
 EWalletController.prototype.offer_side_to_colorvalue = function(side){

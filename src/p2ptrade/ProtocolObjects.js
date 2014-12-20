@@ -7,7 +7,8 @@ var unixTime = require('./Utils').unixTime
 
 
 /**
- * @class EOffer
+ * A is the offer side's ColorValue
+ * B is the replyer side's ColorValue
  */
 function EOffer(oid, A, B){
   if (oid){
