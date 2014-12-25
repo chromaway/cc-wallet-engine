@@ -6,14 +6,14 @@ var ccWallet = require('cc-wallet-core').Wallet
 var CryptoJS = require('crypto-js')
 var _ = require('lodash')
 var store = require('store')
-var delayed = require('delayed')
-var SyncMixin = require('cc-wallet-core').SyncMixin
+var cccoreUtil = require('cc-wallet-core').util
 
 var AssetModels = require('./AssetModels')
 var JsonFormatter = require('./JsonFormatter')
 var cwpp = require('./cwpp')
 var CWPPPaymentModel = require('./CWPPPaymentModel')
 var HistoryEntryModel = require('./HistoryEntryModel')
+var errors = require('./errors')
 
 
 /**
@@ -35,8 +35,8 @@ var HistoryEntryModel = require('./HistoryEntryModel')
 
 /**
  * @class WalletEngine
- * @extends events.EventEmitter
- * @mixins SyncMixin
+ * @extends external:events.EventEmitter
+ * @mixins external:cc-wallet-core.util.SyncMixin
  * @param {Object} [opts]
  * @param {boolean} [opts.testnet=false]
  * @param {string} [opts.network=Electrum] Available: Chain, Electrum
@@ -47,7 +47,7 @@ function WalletEngine(opts) {
   var self = this
   events.EventEmitter.call(self)
   self.setMaxListeners(100) // 10 by default, 0 -- unlimited
-  SyncMixin.call(self)
+  cccoreUtil.SyncMixin.call(self)
 
   opts = _.extend({
     testnet: false,
@@ -65,16 +65,16 @@ function WalletEngine(opts) {
   self._wallet.on('syncStart', function () { self._syncEnter() })
   self._wallet.on('syncStop', function () { self._syncExit() })
 
-  // note: can't depend on network.isConnected because it's updated 
+  // note: can't depend on network.isConnected because it's updated
   // via events
   self._networkIsConnected = self._wallet.network.isConnected()
-  self._wallet.network.on('connect', function () { 
-                            self._networkIsConnected = true
-                            self._update() 
+  self._wallet.network.on('connect', function () {
+    self._networkIsConnected = true
+    self._update()
   })
-  self._wallet.network.on('disconnect', function () { 
-                            self._networkIsConnected = false
-                            self._update() 
+  self._wallet.network.on('disconnect', function () {
+    self._networkIsConnected = false
+    self._update()
   })
 
   // note: we update right away on syncStart, but use debounce on syncStop
@@ -96,22 +96,22 @@ WalletEngine.prototype.isUpdating = function () {
 }
 
 /**
- * @return {Wallet}
+ * @return {external:cc-wallet-core.Wallet}
  */
 WalletEngine.prototype.getWallet = function () {
   return this._wallet
 }
 
 /**
- * @callback WalletEngine~setCallback
+ * @callback WalletEngine~setCallbackCallback
  */
 
 /**
- * @param {WalletEngine~setCallback} callback
+ * @param {WalletEngine~setCallbackCallback} callback
  */
 WalletEngine.prototype.setCallback = function (callback) {
   this._updateCallback = callback
-  this._delayedUpdateCallback = delayed.debounce(callback, 100)
+  this._delayedUpdateCallback = cccoreUtil.debounce(callback, 100)
 }
 
 /**
@@ -138,6 +138,7 @@ WalletEngine.prototype.isInitialized = function () {
  * @throws {Error} If already initialized
  */
 WalletEngine.prototype.initialize = function (mnemonic, password, pin) {
+  // @todo AlreadyInitialize check?
   this.setSeed(mnemonic, password)
   this._wallet.initialize(this.getSeed())
   this._initializeWalletEngine()
@@ -157,7 +158,7 @@ WalletEngine.prototype._initializeWalletEngine = function () {
   self._assetModels.on('syncStart', function () { self._syncEnter() })
   self._assetModels.on('syncStop', function () { self._syncExit() })
 
-  self._wallet.on('historyUpdate', function () {
+  function updateHistory() {
     var entries = self._wallet.getHistory()
 
     function entryEqualFn(entry, index) { return entry.getHistoryEntry().isEqual(entries[index]) }
@@ -169,6 +170,15 @@ WalletEngine.prototype._initializeWalletEngine = function () {
     }).reverse()
 
     self._update()
+  }
+
+  var historyUpdateTrigger = false
+  self._wallet.on('historyUpdate', function () { historyUpdateTrigger = true })
+  self._wallet.on('syncStop', function () {
+    if (historyUpdateTrigger) {
+      updateHistory()
+      historyUpdateTrigger = false
+    }
   })
 
   function subscribeCallback(error) {
@@ -191,11 +201,11 @@ WalletEngine.prototype._initializeWalletEngine = function () {
 WalletEngine.prototype.generateMnemonic = BIP39.generateMnemonic
 
 /**
- * TODO rename to more fitting isCurrentSeed
  * @param {string} mnemonic
  * @param {string} password
  * @return {boolean}
  */
+// @todo Rename to more fitting isCurrentSeed
 WalletEngine.prototype.isCurrentMnemonic = function (mnemonic, password) {
   var seed = BIP39.mnemonicToSeedHex(mnemonic, password)
   return this._wallet.isCurrentSeed(seed)
@@ -220,7 +230,7 @@ WalletEngine.prototype.getPin = function () {
  * @throws {Error} If seed es not set
  */
 WalletEngine.prototype.getPinEncrypted = function () {
-  if (!this.hasSeed()) { throw new Error('No seed set') }
+  this.seedCheck()
 
   var encrypted = CryptoJS.AES.encrypt(
     this._pin, this.getSeed(), {format: JsonFormatter})
@@ -233,7 +243,7 @@ WalletEngine.prototype.getPinEncrypted = function () {
  * @throws {Error} If seed es not set
  */
 WalletEngine.prototype.setPinEncrypted = function (encryptedPin) {
-  if (!this.hasSeed()) { throw new Error('No seed set') }
+  this.seedCheck()
 
   var decrypted = CryptoJS.AES.decrypt(
     encryptedPin, this.getSeed(), {format: JsonFormatter})
@@ -242,7 +252,7 @@ WalletEngine.prototype.setPinEncrypted = function (encryptedPin) {
 }
 
 /**
- * @param {strin} pin
+ * @param {string} pin
  */
 WalletEngine.prototype.setPin = function (pin) {
   this._pin = pin
@@ -253,6 +263,15 @@ WalletEngine.prototype.setPin = function (pin) {
  */
 WalletEngine.prototype.hasSeed = function () {
   return !!this.getSeed()
+}
+
+/**
+ * @throws {SeedIsUndefinedError}
+ */
+WalletEngine.prototype.seedCheck = function () {
+  if (!this.hasSeed()) {
+    throw new errors.SeedIsUndefinedError()
+  }
 }
 
 /**
@@ -269,7 +288,7 @@ WalletEngine.prototype.getSeed = function () {
  */
 WalletEngine.prototype.setSeed = function (mnemonic, password) {
   if (!!this._wallet.isInitialized() && !this.isCurrentMnemonic(mnemonic, password)) {
-    throw new Error('Wrong seed')
+    throw new errors.WrongSeedError()
   }
 
   // only ever store see here and only in ram
@@ -302,8 +321,14 @@ WalletEngine.prototype.canResetSeed = function () {
   )
 }
 
+/**
+ * @param {string} password
+ * @throws {CannotResetSeedError}
+ */
 WalletEngine.prototype.resetSeed = function (password) {
-  if (!this.canResetSeed()) { throw new Error('Cannot reset seed!') }
+  if (!this.canResetSeed()) {
+    throw new errors.CannotResetSeedError()
+  }
 
   this.setSeed(this.stored_mnemonic(), password)
   this.setPinEncrypted(this.stored_encryptedpin())
@@ -323,10 +348,7 @@ WalletEngine.prototype.getAssetModels = function () {
  * @return {AssetModel}
  */
 WalletEngine.prototype.getAssetModelById = function (assetId) {
-  if (!this._wallet.isInitialized()) {
-    throw new Error('not initialized')
-  }
-
+  this._wallet.isInitializedCheck()
   return this._assetModels.getAssetById(assetId)
 }
 
@@ -337,21 +359,18 @@ WalletEngine.prototype.getHistory = function () {
 }
 
 /**
- * @callback WalletEngine~makePaymentFromURI
+ * @callback WalletEngine~makePaymentFromURICallback
  * @param {?Error} error
  * @param {CWPPPaymentModel} paymentModel
  */
 
 /**
  * @param {string} uri
- * @param {WalletEngine~makePaymentFromURI} cb
+ * @param {WalletEngine~makePaymentFromURICallback} cb
  */
 WalletEngine.prototype.makePaymentFromURI = function (uri, cb) {
   var self = this
-
-  if (!self._wallet.isInitialized()) {
-    return cb(new Error('not initialized'))
-  }
+  self._wallet.isInitializedCheck()
 
   if (cwpp.is_cwpp_uri(uri)) {
     var paymentModel = new CWPPPaymentModel(self, uri)
@@ -364,7 +383,7 @@ WalletEngine.prototype.makePaymentFromURI = function (uri, cb) {
 
   var asset = self._assetModels.getAssetForURI(uri)
   if (asset === null) {
-    return cb(new Error('Asset not recognized'))
+    return cb(new errors.AssetNotRecognizedError('WalletEngine.makePaymentFromURI'))
   }
 
   asset.makePaymentFromURI(uri, function (error, paymentModel) {

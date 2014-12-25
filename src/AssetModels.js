@@ -2,7 +2,7 @@ var events = require('events')
 var util = require('util')
 
 var _ = require('lodash')
-var SyncMixin = require('cc-wallet-core').SyncMixin
+var SyncMixin = require('cc-wallet-core').util.SyncMixin
 
 var AssetModel = require('./AssetModel')
 var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
@@ -27,8 +27,8 @@ var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
 
 /**
  * @class AssetModels
- * @extends events.EventEmitter
- * @mixins SyncMixin
+ * @extends external:events.EventEmitter
+ * @mixins external:cc-wallet-core.util.SyncMixin
  * @param {walletEngine} walletEngine
  */
 function AssetModels(walletEngine) {
@@ -46,7 +46,7 @@ function AssetModels(walletEngine) {
 util.inherits(AssetModels, events.EventEmitter)
 
 /**
- * @param {AssetDefinition} assetdef
+ * @param {external:cc-wallet-core.AssetDefinition} assetdef
  */
 AssetModels.prototype._addAssetModel = function (assetdef) {
   var self = this

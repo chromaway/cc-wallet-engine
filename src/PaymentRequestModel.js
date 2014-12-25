@@ -1,19 +1,27 @@
-var assert = require('assert')
-
 var _ = require('lodash')
 var request = require('request')
+var verify = require('cc-wallet-core').verify
 
+var errors = require('./errors')
 var cwpp = require('./cwpp')
 
 
 /**
  * @class PaymentRequestModel
- * @param {ccWallet} wallet
- * @param {AssetDefinition} assetdef
+ * @param {external:cc-wallet-core.Wallet} wallet
+ * @param {external:cc-wallet-core.AssetDefinition} assetdef
  * @param {Object} props
+ * @param {number} props.amount
+ * @param {string} [props.address]
+ * @param {string} [props.cwpp_host]
  */
 function PaymentRequestModel(wallet, assetdef, props) {
-  assert(props.amount, 'Amount must be provided')
+  verify.Wallet(wallet)
+  verify.AssetDefinition(assetdef)
+  verify.object(props)
+  // props.amount verified in parseValue
+  if (!_.isUndefined(props.address)) { verify.string(props.address) }
+  if (!_.isUndefined(props.cwpp_host)) { verify.string(props.cwpp_host) }
 
   this.paymentURI = null
 
@@ -38,13 +46,13 @@ function PaymentRequestModel(wallet, assetdef, props) {
 }
 
 /**
- * @callback PaymentRequestModel~getPaymentURI
+ * @callback PaymentRequestModel~getPaymentURICallback
  * @param {?Error} error
  * @param {string} uri
  */
 
 /**
- * @param {PaymentRequestModel~getPaymentURI} cb
+ * @param {PaymentRequestModel~getPaymentURICallback} cb
  */
 PaymentRequestModel.prototype.getPaymentURI = function (cb) {
   var self = this
@@ -58,10 +66,12 @@ PaymentRequestModel.prototype.getPaymentURI = function (cb) {
   }
 
   request(requestOpts, function (error, response, body) {
-    if (error) { return cb(error) }
+    if (error) {
+      return cb(error)
+    }
 
     if (response.statusCode !== 200) {
-      return cb(new Error('request failed'))
+      return cb(new errors.RequestError('PaymentRequestModel: ' + response.statusMessage))
     }
 
     var result = JSON.parse(body)

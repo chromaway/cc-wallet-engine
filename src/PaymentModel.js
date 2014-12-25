@@ -1,8 +1,10 @@
 var Q = require('q')
 
+var errors = require('./errors')
+
 
 /**
- * @typedef {Object} RecipientObject
+ * @typedef {Object} PaymentModel~RecipientObject
  * @property {string} address
  * @property {string} amount
  */
@@ -47,7 +49,7 @@ PaymentModel.prototype.getTotalAmount = function () {
 }
 
 /**
- * @return {RecipientObject[]}
+ * @return {PaymentModel~RecipientObject[]}
  */
 PaymentModel.prototype.getRecipients = function () {
   return this.recipients
@@ -80,11 +82,11 @@ PaymentModel.prototype.checkAmount = function (amount) {
  * @param {string} address Color addres or bitcoin address ?
  * @param {string} amount
  * @return {PaymentModel}
- * @throws {Error} If payment already sent
+ * @throws {PaymentAlreadyCommitedError}
  */
 PaymentModel.prototype.addRecipient = function (address, amount) {
   if (this.readOnly) {
-    throw new Error('payment has already been comitted')
+    throw new errors.PaymentAlreadyCommitedError()
   }
 
   this.recipients.push({address: address, amount: amount})
@@ -93,21 +95,27 @@ PaymentModel.prototype.addRecipient = function (address, amount) {
 }
 
 /**
- * @callback PaymentModel~send
+ * @callback PaymentModel~sendCallback
  * @param {?Error} error
  */
 
 /**
- * @param {PaymentModel~send} cb
- * @return {PaymentModel}
- * @throws {Error} If payment already sent, recipients list not filled or mnemonic not set
+ * @param {PaymentModel~sendCallback} cb
  */
 PaymentModel.prototype.send = function (cb) {
   var self = this
 
-  if (self.readOnly) { return cb(new Error('Payment has already been comitted')) }
-  if (self.recipients.length === 0) { return cb(new Error('Recipients list is empty')) }
-  if (self.seed === null) { return cb(new Error('Mnemonic not set')) }
+  if (self.readOnly) {
+    return cb(new errors.PaymentAlreadyCommitedError())
+  }
+
+  if (self.recipients.length === 0) {
+    return cb(new errors.ZeroArrayLengthError('PaymentModel.send: recipients list is empty'))
+  }
+
+  if (self.seed === null) {
+    return cb(new errors.MnemonicIsUndefinedError('PaymentModel.send'))
+  }
 
   var assetdef = self.assetModel.getAssetDefinition()
 
