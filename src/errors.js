@@ -9,6 +9,7 @@ var createError = errors.createError || require('errno').create
  *       +-- AssetNotRecognizedError
  *       +-- MnemonicIsUndefinedError
  *       +-- PaymentError
+ *       |    +-- CWPPWrongTxError
  *       |    +-- PaymentAlreadyCommitedError
  *       |    +-- PaymentURIError
  *       |    +-- PaymentWasNotProperlyInitializedError
@@ -46,6 +47,12 @@ var MnemonicIsUndefinedError = createError('MnemonicIsUndefinedError', ColoredCo
  * @extends {external:cc-wallet-core.errors.ColoredCoinError}
  */
 var PaymentError = createError('PaymentError', ColoredCoinError)
+
+/**
+ * @class CWPPWrongTxError
+ * @extends {PaymentError}
+ */
+var CWPPWrongTxError = createError('CWPPWrongTxError', PaymentError)
 
 /**
  * @class PaymentAlreadyCommitedError
@@ -101,6 +108,7 @@ module.exports = _.extend(errors, {
   AssetNotRecognizedError: AssetNotRecognizedError,
   MnemonicIsUndefinedError: MnemonicIsUndefinedError,
   PaymentError: PaymentError,
+  CWPPWrongTxError: CWPPWrongTxError,
   PaymentAlreadyCommitedError: PaymentAlreadyCommitedError,
   PaymentURIError: PaymentURIError,
   PaymentWasNotProperlyInitializedError: PaymentWasNotProperlyInitializedError,

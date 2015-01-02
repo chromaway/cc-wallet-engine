@@ -1,11 +1,15 @@
-var PaymentModel = require('./PaymentModel')
 var inherits = require('util').inherits
+
 var request = require('request')
-var cwpp = require('./cwpp')
+var _ = require('lodash')
+var Q = require('q')
 var cclib = require('cc-wallet-core').cclib
-var errors = require('./errors')
 var OperationalTx = require('cc-wallet-core').tx.OperationalTx
 var RawTx = require('cc-wallet-core').tx.RawTx
+
+var PaymentModel = require('./PaymentModel')
+var cwpp = require('./cwpp')
+var errors = require('./errors')
 
 
 /**
@@ -16,7 +20,7 @@ var RawTx = require('cc-wallet-core').tx.RawTx
  * @param {string} paymentURI
  */
 function CWPPPaymentModel(walletEngine, paymentURI) {
-  PaymentModel(null, null)
+  PaymentModel.call(this)
 
   this.walletEngine = walletEngine
   this.paymentURI = paymentURI
@@ -127,67 +131,134 @@ CWPPPaymentModel.prototype.selectCoins = function (cb) {
 CWPPPaymentModel.prototype.send = function (cb) {
   var self = this
 
-  if (this.readOnly) {
+  if (self.readOnly) {
     return cb(new errors.PaymentAlreadyCommitedError())
   }
 
-  if (this.state !== 'fresh') {
+  if (self.state !== 'fresh') {
     return cb(new errors.PaymentWasNotProperlyInitializedError())
   }
 
-  if (this.recipients.length === 0) {
+  if (self.recipients.length === 0) {
     return cb(new errors.ZeroArrayLengthError('CWPPPaymentModel.send: recipients list is empty'))
   }
 
-  if (this.seed === null) {
+  if (self.seed === null) {
     return cb(new errors.MnemonicIsUndefinedError('CWPPPaymentModel.send'))
   }
 
-  this.readOnly = true
-  this.status = 'sending'
+  self.readOnly = true
+  self.status = 'sending'
 
-  function fail(error) {
-    self.status = 'failed'
-    cb(error)
-  }
-
-  var processURL = cwpp.processURL(this.paymentURI)
-  function cwppProcess(message, prcb) {
+  /**
+   * @param {Object} message
+   * @return {Q.Promise<Object>}
+   */
+  function cwppProcess(message) {
+    // @todo Try add `json: true`
     var requestOpts = {
       method: 'POST',
-      uri: processURL,
+      uri: cwpp.processURL(self.paymentURI),
       body: JSON.stringify(message)
     }
-    request(requestOpts, function (error, response, body) {
-      if (error) { return fail(error) }
-
+    return Q.ninvoke(requestOpts).spread(function (response, body) {
       if (response.statusCode !== 200) {
-        return fail(new errors.RequestError('CWPPPaymentModel: ' + response.statusMessage))
+        throw new errors.RequestError('CWPPPaymentModel: ' + response.statusMessage)
       }
 
-      prcb(JSON.parse(body))
+      return JSON.parse(body)
     })
   }
 
-  var wallet = this.walletEngine.getWallet()
-  this.selectCoins(function (error, cinputs, change, colordef) {
-    if (error) { return fail(error) }
+  var wallet = self.walletEngine.getWallet()
+  var getTxFn = wallet.getBlockchain().getTx.bind(wallet.getBlockchain())
+  var bitcoinNetwork = wallet.getBitcoinNetwork()
 
+  Q.ninvoke(self, 'selectCoins').then(function (cinputs, change, colordef) {
+    // service build transaction
     var msg = cwpp.make_cinputs_proc_req_1(colordef.getDesc(), cinputs, change)
-    cwppProcess(msg, function (resp) {
-      var rawTx = RawTx.fromHex(resp.tx_data)
-      // @todo Check before signing tx!
-      wallet.transformTx(rawTx, 'partially-signed', self.seed, function (error, tx) {
-        if (error) { return fail(error) }
+    return cwppProcess(msg).then(function (response) {
+      var rawTx = RawTx.fromHex(response.tx_data)
 
-        msg = cwpp.make_cinputs_proc_req_2(tx.toHex(true))
-        cwppProcess(msg, function (resp) {
-          var rawTx = RawTx.fromHex(resp.tx_data);
-          wallet.sendTx(rawTx.toTransaction(), cb);
+      return Q.fcall(function () {
+        // check inputs
+        var tx = rawTx.toTransaction(true)
+        var indexes = _.filter(tx.ins.map(function (input, index) {
+          var coin = {
+            txId: Array.prototype.reverse.call(new Buffer(input.hash)).toString('hex'),
+            outIndex: index
+          }
+          return _.isUndefined(_.find(cinputs, coin)) ? index : undefined
+        }))
+
+        if (indexes.length === 0) {
+          return
+        }
+
+        return Q.ninvoke(tx, 'ensureInputValues', getTxFn).then(function (tx) {
+          var matchedCount = _.chain(indexes)
+            .map(function (inputIndex) {
+              var input = tx.ins[inputIndex]
+              var script = input.prevTx.outs[input.index].script
+              return cclib.bitcoin.getAddressesFromOutputScript(script, bitcoinNetwork)
+            })
+            .flatten()
+            .intersection(wallet.getAllAddresses())
+            .value()
+            .length
+
+          if (matchedCount > 0) {
+            throw new errors.CWPPWrongTxError('Wrong inputs')
+          }
         })
+
+      }).then(function () {
+        // check outputs
+        var assetdef = self.assetModel.getAssetDefinition()
+        var fromBase58Check = cclib.bitcoin.Address.fromBase58Check
+        var colorTargets = self.recipients.map(function (recipient) {
+          var script = fromBase58Check(recipient.address).toOutputScript().toHex()
+          var amount = assetdef.parseValue(recipient.amount)
+          var colorValue = new cclib.ColorValue(colordef, amount)
+          return new cclib.ColorTarget(script, colorValue)
+        })
+
+        return Q.ninvoke(rawTx, 'satisfiesTargets', wallet, colorTargets, false).then(function (isSatisfied) {
+          if (!isSatisfied) {
+            throw new errors.CWPPWrongTxError('Wrong outputs')
+          }
+        })
+
+      }).then(function () {
+        return rawTx
+
       })
     })
-  })
+
+  }).then(function (rawTx) {
+    // we signing transaction
+    return Q.ninvoke(wallet, 'transformTx', rawTx, 'partially-signed', self.seed)
+
+  }).then(function (tx) {
+    // service signing transaction
+    var msg = cwpp.make_cinputs_proc_req_2(tx.toHex(true))
+    return cwppProcess(msg)
+
+  }).then(function (response) {
+    // build transaction and send
+    var tx = RawTx.fromHex(response.tx_data).toTransaction()
+    return Q.ninvoke(wallet, 'sendTx', tx)
+
+  }).done(
+    function () {
+      self.status = 'send'
+      cb(null)
+    },
+    function (error) {
+      self.status = 'failed'
+      cb(error)
+    }
+  )
 }
 
 
