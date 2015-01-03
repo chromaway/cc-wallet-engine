@@ -131,7 +131,7 @@ PaymentModel.prototype.send = function (cb) {
 
   var wallet = self.assetModel.getWallet()
   Q.ninvoke(wallet, 'createTx', self.assetModel.getAssetDefinition(), rawTargets).then(function (tx) {
-    return Q.ninvoke(wallet, 'transformTx', tx, 'signed', self.seed)
+    return Q.ninvoke(wallet, 'transformTx', tx, 'signed', {seedHex: self.seed})
 
   }).then(function (tx) {
     return Q.ninvoke(wallet, 'sendTx', tx)

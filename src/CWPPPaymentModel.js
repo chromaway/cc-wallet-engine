@@ -119,6 +119,66 @@ CWPPPaymentModel.prototype.selectCoins = function (cb) {
   })
 }
 
+/**
+ * @param {RawTx} rawTx
+ * @param {external:cc-wallet-core.Coin~RawCoin[]} cinputs
+ * @param {?{address: string, value: number}} change
+ * @param {external:cc-wallet-core.cclib.ColorDefinition} colordef
+ * @return {Q.Promise}
+ */
+CWPPPaymentModel.prototype._checkRawTx = function (rawTx, cinputs, change, colordef) {
+  var self = this
+  var wallet = self.walletEngine.getWallet()
+
+  return Q.fcall(function () {
+    // check inputs
+    var tx = rawTx.toTransaction(true)
+    var txInputs = _.zipObject(tx.ins.map(function (input, index) {
+      var txId = Array.prototype.reverse.call(new Buffer(input.hash)).toString('hex')
+      return [txId + input.index, index]
+    }))
+    var indexes = _.chain(txInputs)
+      .keys()
+      .difference(cinputs.map(function (input) {
+        return input.txId + input.outIndex
+      }))
+      .map(function (key) { return txInputs[key] })
+      .value()
+
+    if (indexes.length > 0) {
+      return
+    }
+
+    return Q.ninvoke(rawTx, 'getInputAddresses', wallet, indexes).then(function (txAddresses) {
+      if (_.intersection(txAddresses, wallet.getAllAddresses()).length > 0) {
+        throw new errors.CWPPWrongTxError('Wrong inputs')
+      }
+    })
+
+  }).then(function () {
+    // check outputs
+    var recipients = _.cloneDeep(self.recipients)
+    if (change !== null) {
+      recipients.push({address: change.address, amount: change.value})
+    }
+
+    var assetdef = self.assetModel.getAssetDefinition()
+    var fromBase58Check = cclib.bitcoin.Address.fromBase58Check
+    var colorTargets = recipients.map(function (recipient) {
+      var script = fromBase58Check(recipient.address).toOutputScript().toHex()
+      var amount = assetdef.parseValue(recipient.amount)
+      var colorValue = new cclib.ColorValue(colordef, amount)
+      return new cclib.ColorTarget(script, colorValue)
+    })
+
+    return Q.ninvoke(rawTx, 'satisfiesTargets', wallet, colorTargets, false).then(function (isSatisfied) {
+      if (!isSatisfied) {
+        throw new errors.CWPPWrongTxError('Wrong outputs')
+      }
+    })
+
+  })
+}
 
 /**
  * @callback CWPPPaymentModel~sendCallback
@@ -171,73 +231,30 @@ CWPPPaymentModel.prototype.send = function (cb) {
   }
 
   var wallet = self.walletEngine.getWallet()
-  var getTxFn = wallet.getBlockchain().getTx.bind(wallet.getBlockchain())
-  var bitcoinNetwork = wallet.getBitcoinNetwork()
-
   Q.ninvoke(self, 'selectCoins').then(function (cinputs, change, colordef) {
     // service build transaction
     var msg = cwpp.make_cinputs_proc_req_1(colordef.getDesc(), cinputs, change)
     return cwppProcess(msg).then(function (response) {
       var rawTx = RawTx.fromHex(response.tx_data)
-
-      return Q.fcall(function () {
-        // check inputs
-        var tx = rawTx.toTransaction(true)
-        var indexes = _.filter(tx.ins.map(function (input, index) {
-          var coin = {
-            txId: Array.prototype.reverse.call(new Buffer(input.hash)).toString('hex'),
-            outIndex: index
-          }
-          return _.isUndefined(_.find(cinputs, coin)) ? index : undefined
-        }))
-
-        if (indexes.length === 0) {
-          return
-        }
-
-        return Q.ninvoke(tx, 'ensureInputValues', getTxFn).then(function (tx) {
-          var matchedCount = _.chain(indexes)
-            .map(function (inputIndex) {
-              var input = tx.ins[inputIndex]
-              var script = input.prevTx.outs[input.index].script
-              return cclib.bitcoin.getAddressesFromOutputScript(script, bitcoinNetwork)
-            })
-            .flatten()
-            .intersection(wallet.getAllAddresses())
-            .value()
-            .length
-
-          if (matchedCount > 0) {
-            throw new errors.CWPPWrongTxError('Wrong inputs')
-          }
-        })
-
-      }).then(function () {
-        // check outputs
-        var assetdef = self.assetModel.getAssetDefinition()
-        var fromBase58Check = cclib.bitcoin.Address.fromBase58Check
-        var colorTargets = self.recipients.map(function (recipient) {
-          var script = fromBase58Check(recipient.address).toOutputScript().toHex()
-          var amount = assetdef.parseValue(recipient.amount)
-          var colorValue = new cclib.ColorValue(colordef, amount)
-          return new cclib.ColorTarget(script, colorValue)
-        })
-
-        return Q.ninvoke(rawTx, 'satisfiesTargets', wallet, colorTargets, false).then(function (isSatisfied) {
-          if (!isSatisfied) {
-            throw new errors.CWPPWrongTxError('Wrong outputs')
-          }
-        })
-
-      }).then(function () {
+      // check inputs and outputs
+      return self._checkRawTx(rawTx, cinputs, change, colordef).then(function () {
         return rawTx
-
       })
-    })
 
-  }).then(function (rawTx) {
-    // we signing transaction
-    return Q.ninvoke(wallet, 'transformTx', rawTx, 'partially-signed', self.seed)
+    }).then(function (rawTx) {
+      // we signing transaction
+      var tx = rawTx.toTransaction(true)
+      var txInputs = _.zipObject(tx.ins.map(function (input, index) {
+        var txId = Array.prototype.reverse.call(new Buffer(input.hash)).toString('hex')
+        return [txId + input.index, index]
+      }))
+      var indexes = _.chain(cinputs)
+        .map(function (input) { return txInputs[input.txId + input.outIndex] })
+        .value()
+
+      var opts = {seedHex: self.seed, signingOnly: indexes}
+      return Q.ninvoke(wallet, 'transformTx', rawTx, 'partially-signed', opts)
+    })
 
   }).then(function (tx) {
     // service signing transaction
