@@ -34,7 +34,7 @@ function PaymentRequestModel(wallet, assetdef, props) {
     props.address = wallet.getSomeAddress(assetdef, false)
   } else {
     // need uncolored address
-    props.address = wallet.getBitcoinAddress(assetdef, props.address)
+    props.address = wallet.getBitcoinAddress(props.address)
   }
 
   if (_.isUndefined(props.cwpp_host)) {
@@ -67,7 +67,7 @@ PaymentRequestModel.prototype.getPaymentURI = function (cb) {
       body: JSON.stringify(self.cwppPayReq)
     }
 
-    self.paymentURI = Q.ninvoke(request, requestOpts).spread(function (response, body) {
+    self.paymentURI = Q.nfcall(request, requestOpts).spread(function (response, body) {
       if (response.statusCode !== 200) {
         throw new errors.RequestError('PaymentRequestModel: ' + response.statusMessage)
       }

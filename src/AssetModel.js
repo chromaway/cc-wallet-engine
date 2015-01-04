@@ -172,6 +172,7 @@ AssetModel.prototype.makePayment = function () {
 }
 
 /**
+ * @param {Object} props
  * @return {PaymentRequestModel}
  */
 AssetModel.prototype.makePaymentRequest = function (props) {

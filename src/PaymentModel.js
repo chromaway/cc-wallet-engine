@@ -121,7 +121,7 @@ PaymentModel.prototype.send = function (cb) {
 
   var rawTargets = self.getRecipients().map(function (recipient) {
     return {
-      address: self.assetModel.getWallet().getBitcoinAddress(assetdef, recipient.address),
+      address: self.assetModel.getWallet().getBitcoinAddress(recipient.address),
       value: assetdef.parseValue(recipient.amount)
     }
   })

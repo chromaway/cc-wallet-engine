@@ -57,6 +57,7 @@ CWPPPaymentModel.prototype.initialize = function (cb) {
       return cb(new errors.RequestError('CWPPPaymentModel: ' + response.statusMessage))
     }
 
+    // may throw SyntaxError
     self.payreq = JSON.parse(body)
 
     var assetId = self.payreq.assetId
@@ -157,13 +158,15 @@ CWPPPaymentModel.prototype._checkRawTx = function (rawTx, cinputs, change, color
 
   }).then(function () {
     // check outputs
-    var recipients = _.cloneDeep(self.recipients)
-    if (change !== null) {
-      recipients.push({address: change.address, amount: change.value})
-    }
-
     var assetdef = self.assetModel.getAssetDefinition()
     var fromBase58Check = cclib.bitcoin.Address.fromBase58Check
+    var recipients = _.cloneDeep(self.recipients)
+    if (change !== null) {
+      recipients.push({
+        address: change.address,
+        amount: assetdef.formatValue(change.value)
+      })
+    }
     var colorTargets = recipients.map(function (recipient) {
       var script = fromBase58Check(recipient.address).toOutputScript().toHex()
       var amount = assetdef.parseValue(recipient.amount)
@@ -215,23 +218,29 @@ CWPPPaymentModel.prototype.send = function (cb) {
    * @return {Q.Promise<Object>}
    */
   function cwppProcess(message) {
-    // @todo Try add `json: true`
     var requestOpts = {
       method: 'POST',
       uri: cwpp.processURL(self.paymentURI),
-      body: JSON.stringify(message)
+      body: JSON.stringify(message),
+      json: true
     }
-    return Q.ninvoke(requestOpts).spread(function (response, body) {
+    return Q.nfcall(request, requestOpts).spread(function (response, body) {
       if (response.statusCode !== 200) {
-        throw new errors.RequestError('CWPPPaymentModel: ' + response.statusMessage)
+        var error = response.statusMessage
+        if (_.isObject(body) && !_.isUndefined(body.error)) {
+          error = body.error
+        }
+
+        throw new errors.RequestError('CWPPPaymentModel: ' + error)
       }
 
+      return body
       return JSON.parse(body)
     })
   }
 
   var wallet = self.walletEngine.getWallet()
-  Q.ninvoke(self, 'selectCoins').then(function (cinputs, change, colordef) {
+  Q.ninvoke(self, 'selectCoins').spread(function (cinputs, change, colordef) {
     // service build transaction
     var msg = cwpp.make_cinputs_proc_req_1(colordef.getDesc(), cinputs, change)
     return cwppProcess(msg).then(function (response) {
