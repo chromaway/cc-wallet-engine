@@ -60,11 +60,11 @@ PaymentRequestModel.prototype.getPaymentURI = function (cb) {
 
   var self = this
   if (self.paymentURI === null) {
-    // @todo Try add `json:true`
     var requestOpts = {
       method: 'POST',
       uri: 'http://' + self.props.cwpp_host + '/cwpp/new-request',
-      body: JSON.stringify(self.cwppPayReq)
+      body: JSON.stringify(self.cwppPayReq),
+      json: true
     }
 
     self.paymentURI = Q.nfcall(request, requestOpts).spread(function (response, body) {
@@ -72,7 +72,7 @@ PaymentRequestModel.prototype.getPaymentURI = function (cb) {
         throw new errors.RequestError('PaymentRequestModel: ' + response.statusMessage)
       }
 
-      return cwpp.make_cwpp_uri(self.props.cwpp_host, JSON.parse(body).hash)
+      return cwpp.make_cwpp_uri(self.props.cwpp_host, body.hash)
     })
   }
 

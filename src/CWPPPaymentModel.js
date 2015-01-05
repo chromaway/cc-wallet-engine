@@ -44,26 +44,21 @@ CWPPPaymentModel.prototype.initialize = function (cb) {
 
   var requestOpts = {
     method: 'GET',
-    uri: cwpp.requestURL(self.paymentURI)
-    //json: true ?
+    uri: cwpp.requestURL(self.paymentURI),
+    json: true
   }
 
-  request(requestOpts, function (error, response, body) {
-    if (error) {
-      return cb(error)
-    }
-
+  Q.nfcall(request, requestOpts).spread(function (response, body) {
     if (response.statusCode !== 200) {
-      return cb(new errors.RequestError('CWPPPaymentModel: ' + response.statusMessage))
+      throw new errors.RequestError('CWPPPaymentModel: ' + response.statusMessage)
     }
 
-    // may throw SyntaxError
-    self.payreq = JSON.parse(body)
+    self.payreq = body
 
     var assetId = self.payreq.assetId
     self.assetModel = self.walletEngine.getAssetModelById(assetId)
     if (!self.assetModel) {
-      return cb(new errors.AssetNotRecognizedError('CWPPPaymentModel.initialize'))
+      throw new errors.AssetNotRecognizedError('CWPPPaymentModel.initialize')
     }
 
     self.recipients = [{
@@ -72,8 +67,7 @@ CWPPPaymentModel.prototype.initialize = function (cb) {
     }]
     self.state = 'fresh'
 
-    cb(null)
-  })
+  }).done(function () { cb(null) }, function (error) { cb(error) })
 }
 
 /**
@@ -235,7 +229,6 @@ CWPPPaymentModel.prototype.send = function (cb) {
       }
 
       return body
-      return JSON.parse(body)
     })
   }
 
