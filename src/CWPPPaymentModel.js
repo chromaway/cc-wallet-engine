@@ -174,7 +174,7 @@ CWPPPaymentModel.prototype._checkRawTx = function (rawTx, cinputs, change, color
       return new cclib.ColorTarget(script, colorValue)
     })
 
-    return Q.ninvoke(rawTx, 'satisfiesTargets', wallet, colorTargets, false).then(function (isSatisfied) {
+    return Q.ninvoke(rawTx, 'satisfiesTargets', wallet, colorTargets, true).then(function (isSatisfied) {
       if (!isSatisfied) {
         throw new errors.CWPPWrongTxError('Wrong outputs')
       }

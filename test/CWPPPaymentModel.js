@@ -35,6 +35,7 @@ describe('CWPPPaymentModel', function () {
         return am.getMoniker() === goldAsset.monikers[0]
       })[0]
       var paymentOpts = {
+        // cwpp_host: 'localhost:4242',
         amount: '1',
         address: 'mr7NzJFwZ978iqmv3GaAWbCpYhaiLWf2JP'
       }
