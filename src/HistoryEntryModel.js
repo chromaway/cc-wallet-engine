@@ -3,22 +3,21 @@ var HistoryTargetModel = require('./HistoryTargetModel')
 
 
 /**
- * @constant
- * @type {number}
+ * @const {number} HistoryEntryModel~TimezoneOffset
  */
 var TimezoneOffset = new Date().getTimezoneOffset() * 60
 
 
 /**
  * @class HistoryEntryModel
- * @param {cc-wallet-core.history.HistoryEntry} historyEntry
+ * @param {external:cc-wallet-core.HistoryEntry} historyEntry
  */
 function HistoryEntryModel(historyEntry) {
   this.historyEntry = historyEntry
 }
 
 /**
- * @return {cc-wallet-core.history.HistoryEntry}
+ * @return {external:cc-wallet-core.HistoryEntry}
  */
 HistoryEntryModel.prototype.getHistoryEntry = function () {
   return this.historyEntry
@@ -72,7 +71,7 @@ HistoryEntryModel.prototype.isSend = function () {
  * @return {boolean}
  */
 HistoryEntryModel.prototype.isTrade = function () {
-  return false // TODO
+  return false // @todo
 }
 
 /**
@@ -93,9 +92,17 @@ HistoryEntryModel.prototype.isPaymentToYourself = function () {
  * @return {string}
  */
 HistoryEntryModel.prototype.getTransactionType = function () {
-  if (this.isSend()) { return 'Send' }
-  if (this.isReceive()) { return 'Receive' }
-  if (this.isPaymentToYourself()) { return 'Payment to yourself' }
+  if (this.isSend()) {
+    return 'Send'
+  }
+
+  if (this.isReceive()) {
+    return 'Receive'
+  }
+
+  if (this.isPaymentToYourself()) {
+    return 'Payment to yourself'
+  }
 }
 
 

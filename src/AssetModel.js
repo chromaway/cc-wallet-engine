@@ -2,13 +2,13 @@ var events = require('events')
 var util = require('util')
 
 var _ = require('lodash')
-var delayed = require('delayed')
 var Q = require('q')
-var SyncMixin = require('cc-wallet-core').SyncMixin
+var cccoreUtil = require('cc-wallet-core').util
 
 var PaymentModel = require('./PaymentModel')
 var PaymentRequestModel = require('./PaymentRequestModel')
 var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
+var errors = require('./errors')
 
 
 /**
@@ -30,15 +30,15 @@ var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
 
 /**
  * @class AssetModel
- * @extends events.EventEmitter
- * @mixins SyncMixin
+ * @extends external:events.EventEmitter
+ * @mixins external:cc-wallet-core.util.SyncMixin
  * @param {WalletEngine} walletEngine
- * @param {cc-wallet-core.asset.AssetDefinition} assetdef
+ * @param {external:cc-wallet-core.AssetDefinition} assetdef
  */
 function AssetModel(walletEngine, assetdef) {
   var self = this
   events.EventEmitter.call(self)
-  SyncMixin.call(self)
+  cccoreUtil.SyncMixin.call(self)
 
   self._wallet = walletEngine.getWallet()
   self._walletEngine = walletEngine
@@ -56,7 +56,7 @@ function AssetModel(walletEngine, assetdef) {
   }
 
   var updateState = {isUpdating: false, isStillNeedUpdate: false}
-  var update = delayed.debounce(function () {
+  var update = cccoreUtil.debounce(function () {
     if (updateState.isUpdating) {
       return (updateState.isStillNeedUpdate = true)
     }
@@ -88,7 +88,7 @@ function AssetModel(walletEngine, assetdef) {
 util.inherits(AssetModel, events.EventEmitter)
 
 /**
- * @return {Q.Promise}
+ * @return {external:Q.Promise}
  */
 AssetModel.prototype._update = function () {
   var self = this
@@ -116,14 +116,14 @@ AssetModel.prototype._update = function () {
 }
 
 /**
- * @return {cc-wallet-core.Wallet}
+ * @return {external:cc-wallet-core.Wallet}
  */
 AssetModel.prototype.getWallet = function () {
   return this._wallet
 }
 
 /**
- * @return {cc-wallet-core.asset.AssetDefinition}
+ * @return {external:cc-wallet-core.AssetDefinition}
  */
 AssetModel.prototype.getAssetDefinition = function () {
   return this._assetdef
@@ -179,28 +179,29 @@ AssetModel.prototype.makePaymentRequest = function (props) {
 }
 
 /**
- * @callback AssetModel~makePaymentFromURI
+ * @callback AssetModel~makePaymentFromURICallback
  * @param {?Error} error
  * @param {PaymentModel} paymentModel
  */
 
 /**
  * @param {string} uri
- * @param {AssetModel~makePaymentFromURI} cb
-
- * @return {PaymentModel}
- * @throws {Error}
+ * @param {AssetModel~makePaymentFromURICallback} cb
  */
 AssetModel.prototype.makePaymentFromURI = function (uri, cb) {
   var params = decode_bitcoin_uri(uri)
-  if (params === null || _.isUndefined(params.address)) {
-    return cb(new Error('wrong payment URI'))
+  if (params === null) {
+    return cb(new errors.PaymentURIError('wrong params'))
+  }
+
+  if (_.isUndefined(params.address)) {
+    return cb(new errors.PaymentURIError('wrong address'))
   }
 
   // by default assetId for bitcoin
   var assetId = _.isUndefined(params.asset_id) ? 'JNu4AFCBNmTE1' : params.asset_id
   if (assetId !== this._assetdef.getId()) {
-    return cb(new Error('wrong payment URI (wrong asset)'))
+    return cb(new errors.PaymentURIError('wrong asset_id'))
   }
 
   var colorAddress = params.address

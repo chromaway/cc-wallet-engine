@@ -1,6 +1,6 @@
 /**
  * @class HistoryTargetModel
- * @param {cc-wallet-core.history.HistoryTarget} historyTarget
+ * @param {external:cc-wallet-core.HistoryTarget} historyTarget
  */
 function HistoryTargetModel(historyTarget) {
   var asset = historyTarget.getAsset()
