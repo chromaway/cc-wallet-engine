@@ -1,11 +1,10 @@
+var request = require('browser-request') // only works in browser, if at all?
+var crypto = require('crypto')
 
 function make_random_id() {
-  return 4 // chosen by fair dice roll.
-           // guaranteed to be random.
-           // TODO fix it ...
-           // TODO test it
+  // TODO 128bit as base64
+  return crypto.randomBytes(8).toString('hex')
 }
-
 
 /**
  * @class HTTPInterface
@@ -17,6 +16,16 @@ function HTTPInterface(){
 
 HTTPInterface.prototype.poll = function(url){
   var result = []
+  request({method:'GET', url:url, json:true}, function(err, response, body){
+    if(err){
+      throw err
+    }
+    result = body // json parse needed?
+  })
+  return result
+
+  /*
+  var result = []
   jQuery.ajax({
     type: 'GET',
     async: false,
@@ -26,9 +35,20 @@ HTTPInterface.prototype.poll = function(url){
     }
   })
   return result
+  */
 }
 
 HTTPInterface.prototype.post = function(url, content){
+  var posted = false
+  request({method:'POST', url:url, json:content}, function(err, response, body){
+    if(err){
+      throw err
+    }
+    posted = true
+  })
+  return posted
+
+  /*
   var posted = true
   jQuery.ajax({
     type: 'POST',
@@ -40,6 +60,7 @@ HTTPInterface.prototype.post = function(url, content){
     }
   })
   return posted
+  */
 }
 
 function dictLength(dictionary){
