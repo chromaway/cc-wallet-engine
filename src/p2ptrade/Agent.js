@@ -141,7 +141,7 @@ EAgent.prototype.dispatch_exchange_proposal = function(ep_data){
       return this.update_exchange_proposal(ep)
     }
   } else {
-    if(ep.offer.oid in this.my_offers){
+    if(ep.offer.oid in this.my_offers && !this.has_active_ep()){
       return this.accept_exchange_proposal(ep)
     }
   }
@@ -151,14 +151,25 @@ EAgent.prototype.dispatch_exchange_proposal = function(ep_data){
     // remove offer if it is in-work
     delete this.their_offers[ep.offer.oid]
   }
-  return null
+  return false
+}
+
+EAgent.prototype.isValidInitialForeignExchangeProposal = function(ep, my_offer){
+  // FIXME implement
+  return true
+}
+
+EAgent.prototype.isValidForeignExchangeProposalReply = function(foreign_ep, my_ep){
+  // FIXME implement
+  return true
 }
 
 EAgent.prototype.accept_exchange_proposal = function(ep){
-  if(this.has_active_ep()){
+  var my_offer = this.my_offers[ep.offer.oid]
+  if(!this.isValidInitialForeignExchangeProposal(ep, my_offer)){
+    // FIXME handle invalid foreign ep
     return false
   }
-  var my_offer = this.my_offers[ep.offer.oid]
   var reply_ep = ep.accept(my_offer)
   this.set_active_ep(reply_ep)
   this.post_message(reply_ep)
@@ -179,10 +190,14 @@ EAgent.prototype.clear_orders = function(ep){
   this.fire_event('offers_updated', null)
 }
 
+/** 
+ * TODO rename ot finishExchange
+ */
 EAgent.prototype.update_exchange_proposal = function(ep){
   var my_ep = this.active_ep
-  if(!my_ep || my_ep.pid == ep.pid){
-    throw new Error("Wrong pid")
+  if(!this.isValidForeignExchangeProposalReply(ep, my_ep)){
+    // FIXME handle invalid ep reply
+    return false
   }
   my_ep.process_reply(ep)
   if(my_ep instanceof MyEProposal){
@@ -190,6 +205,7 @@ EAgent.prototype.update_exchange_proposal = function(ep){
   }
   this.clear_orders(my_ep)
   this.set_active_ep(null)
+  return true
 }
 
 EAgent.prototype.post_message = function(obj){

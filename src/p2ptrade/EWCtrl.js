@@ -214,19 +214,22 @@ EWalletController.prototype.publish_tx = function(raw_tx, my_offer){
   return published
 }
 
+
+
 /**
  * Check if raw tx satisfies spec's targets.
  * @param src_etx_spec: from MyEProposal
  * @param raw_tx: from ForeignEProposal
  */
-EWalletController.prototype.checkTx = function(raw_tx, src_etx_spec){
+EWalletController.prototype._checkTx = function(raw_tx, src_etx_spec){
+  /*
   var self = this
 
   var bctx = bitcoin.core.CTransaction.deserialize(raw_tx.get_tx_data())
   var txhash = raw_tx.get_hex_txhash()
   var blockchain_state = self.model.ccc.blockchain_state
   var ctx = CTransaction.from_bitcoincore(txhash, bctx, blockchain_state)
-  
+
   var src_tragets = []
   var src_color_id_set = new Set([])
   var used_outputs = new Set([])
@@ -236,10 +239,10 @@ EWalletController.prototype.checkTx = function(raw_tx, src_etx_spec){
   src_etx_spec.targets.forEach(function (target) {
     var raw_addr = CBitcoinAddress(target[0])
     var src_color_id = self.resolve_color_spec(target[0]).get_color_id()
-    var src_color_id_set.add(src_color_id)
-    src_tragets.push([raw_addr, src_color_id, target[2]]) 
+    src_color_id_set.add(src_color_id)
+    src_tragets.push([raw_addr, src_color_id, target[2]])
   }
-  
+
   // find satisfied colored coin targets
   src_color_id_set.get().forEach(function (src_color_id){
     if(src_color_id == 0){
@@ -292,6 +295,7 @@ EWalletController.prototype.checkTx = function(raw_tx, src_etx_spec){
     }
   }
   return src_tragets.length == satisfied_src_targets.size
+  */
 }
 
 EWalletController.prototype.resolve_color_spec = function(color_spec){
@@ -313,8 +317,8 @@ EWalletController.prototype.selectInputs = function(colorvalue, cb){
       } else {
         var change = total - colorvalue
         if(feeEstimator){
-          change = change - feeEstimator.estimateRequiredFee({ 
-            extraTxIns: selection.length 
+          change = change - feeEstimator.estimateRequiredFee({
+            extraTxIns: selection.length
           })
         }
         if(change < optx.getDustThreshold()){

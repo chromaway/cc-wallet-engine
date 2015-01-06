@@ -31,6 +31,9 @@ function MockEWCtrl(){
 MockEWCtrl.prototype.make_etx_spec = function(a,b){
   return { get_data: function() { return "mock_etx_spec" } }
 }
+MockEWCtrl.prototype.make_reply_tx = function(etx_spec, a, b){
+  return { toHex: function(){ return "mock_reply_tx_hex";} }
+}
 
 /**
  * Mock Comm
@@ -288,23 +291,38 @@ describe('P2PTrade Agent', function(){
 
   it('dispatch_exchange_proposal updates active_ep if matches', function(){
     // update_exchange_proposal if active_ep and matching pid
-    
-    // TODO test it
-    expect(false).to.be.true
+   
+    var my_offer = mockMyEOffer()
+    var their_offer = mockTheirEOffer()
+    agent.make_exchange_proposal(their_offer, my_offer)
+    agent.active_ep.process_reply = function (ep) {
+      // monkeypatch to not process reply
+    }
+    var data = { 
+      'pid' : agent.active_ep.pid, 'offer' : mockMyEOffer(),
+      'etx_spec' : 'mock_etx_spec'
+    }
+    expect(agent.dispatch_exchange_proposal(data)).to.be.true
   })
 
   it('dispatch_exchange_proposal accepts offer if matches', function(){
     // accept_exchange_proposal if no active_ep and matching oid
-    
-    // TODO test it
-    expect(false).to.be.true
+   
+    var data = { 
+      'pid' : 'mock_pid', 'offer' : mockMyEOffer(),
+      'etx_spec' : 'mock_etx_spec'
+    }
+    agent.register_my_offer(mockMyEOffer())
+    expect(agent.dispatch_exchange_proposal(data)).to.be.true
+    expect(agent.has_active_ep()).to.be.true
+    expect(comm.messages.length > 0).to.be.true
   })
 
   it('dispatch_exchange_proposal removes their_offer if no matches', function(){
-    data = { 'pid' : 'mock_pid', 'offer' : mockTheirEOffer() }
+    var data = { 'pid' : 'mock_pid', 'offer' : mockTheirEOffer() }
     agent.register_their_offer(mockTheirEOffer())
     expect(dictLength(agent.their_offers) == 1).to.be.true
-    expect(agent.dispatch_exchange_proposal(data)).to.be.null
+    expect(agent.dispatch_exchange_proposal(data)).to.be.false
     expect(dictLength(agent.their_offers) == 0).to.be.true
   })
 
@@ -314,11 +332,6 @@ describe('P2PTrade Agent', function(){
     expect(agent.accept_exchange_proposal(ep)).to.be.true
     expect(agent.active_ep).to.deep.equal(ep.reply_ep)
     expect(comm.messages).to.deep.equal([ep.reply_ep.get_data()])
-  })
-
-  it('accept_exchange_proposal fails if active_ep', function(){
-    agent.set_active_ep("test_ep")
-    expect(agent.accept_exchange_proposal(null)).to.be.false
   })
 
   it('clear_orders', function(){
@@ -362,29 +375,18 @@ describe('P2PTrade Agent', function(){
     expect(comm.messages.length > 0).to.be.true
   })
 
-  it('update_exchange_proposal error if no active_ep', function(){
-    expect(function(){ agent.update_exchange_proposal(null) }).to.throw(Error)
-  })
-
-  it('update_exchange_proposal error if pid equal', function(){
-    var my_ep = { pid: "test" }
-    var reply_ep = { pid: "test" }
-    agent.set_active_ep(my_ep)
-    expect(function(){ agent.update_exchange_proposal(reply_ep) }).to.throw(Error)
-  })
-
   it('post_message', function(){
     var obj = { get_data: function(){ return "test"} }
     agent.post_message(obj)
     expect(comm.messages).to.deep.equal(["test"])
   })
 
-  it('TODO dispatch_message', function(){
-    // TODO test it
+  it.skip('dispatch_message', function(){
+    // TODO how to test it?
     expect(false).to.be.true
   })
 
-  it('TODO update', function(){
+  it.skip('update', function(){
     // TODO how to test it?
     expect(false).to.be.true
   })
