@@ -1,7 +1,7 @@
 var util = require('util')
-var WalletCore = require('cc-wallet-core');
-var OperationalTx = WalletCore.tx.OperationalTx;
-var ColorValue = WalletCore.cclib.ColorValue;
+var WalletCore = require('cc-wallet-core')
+var OperationalTx = WalletCore.tx.OperationalTx
+var ColorValue = WalletCore.cclib.ColorValue
 var EPOBCColorDefinition = WalletCore.cclib.EPOBCColorDefinition;
 var UncoloredColorDefinition = WalletCore.cclib.UncoloredColorDefinition
 var Set = require('set')
@@ -58,7 +58,7 @@ OperationalETxSpec.prototype.prepare_inputs = function(etx_spec){
       }
       var colorvalue = null
       if(colordef.getColorType() === "uncolored"){
-        colorvalue = new ColorValue({colordef: colordef, value: prevout.value})
+        colorvalue = new ColorValue(colordef, prevout.value)
       } else {
         var colordata = this.ewctrl.wallet.getColorData()
         colordata.getColorValue(txhash, outindex, colordef, function(e, cv){
@@ -82,23 +82,21 @@ OperationalETxSpec.prototype.prepare_targets = function(etx_spec, their){
     var color_spec = etx_spec.targets[i][0]
     var value = etx_spec.targets[i][0]
     var colordef = this.ewctrl.resolve_color_spec(color_spec)
-    var colorvalue = new ColorValue({colordef: colordef, value: value})
+    var colorvalue = new ColorValue(colordef, value)
     var targetScript = bitcoin.Address.fromBase58Check(address).toOutputScript()
     this.targets.push(new ColorTarget(targetScript.toHex(), colorvalue))
   }
   var their_colordef = this.ewctrl.resolve_color_spec(their['color_spec'])
   var address = this.getChangeAddress(colordef)
   var targetScript = bitcoin.Address.fromBase58Check(address).toOutputScript()
-  var cv = new ColorValue({colordef: their_colordef, value: their['value']})
+  var cv = new ColorValue(their_colordef, their['value'])
   this.targets.push(new ColorTarget(targetScript.toHex(), cv))
 }
 
 OperationalETxSpec.prototype.select_uncolored_coins = function(
       colorvalue, feeEstimator
     ){
-  var zero = new ColorValue({
-    colordef: new UncoloredColorDefinition(), value: 0
-  })
+  var zero = new ColorValue(new UncoloredColorDefinition(), 0)
   var selected_inputs = []
   var selected_value = zero.clone()
   var needed = zero.clone()
@@ -122,9 +120,9 @@ OperationalETxSpec.prototype.select_uncolored_coins = function(
     selected_value = selected_value.plus(total)
   }
   if(needed.getValue() > 0){
-    var value_limit = new ColorValue({
-      colordef: new UncoloredColorDefinition(), value: 10000+8192*2
-    })
+    var value_limit = new ColorValue(
+        new UncoloredColorDefinition(), 10000+8192*2
+    )
     if(this.our_value_limit.isUncolored()){
       value_limit = value_limit.plus(this.our_value_limit)
     }
@@ -202,6 +200,12 @@ EWalletController.prototype.publish_tx = function(raw_tx, my_offer){
   // add to history
   // TODO history trade entry not implemented ?
   // this.wallet.historyManager
+
+  // txhash = raw_tx.get_hex_txhash()
+  // self.model.tx_history.add_trade_entry(
+  //     txhash,
+  //     self.offer_side_to_colorvalue(my_offer.B),
+  //     self.offer_side_to_colorvalue(my_offer.A))
 
   // publish transaction
   var published = true
@@ -299,12 +303,12 @@ EWalletController.prototype._checkTx = function(raw_tx, src_etx_spec){
 }
 
 EWalletController.prototype.resolve_color_spec = function(color_spec){
-  return this.wallet.cdManager.resolveByDesc(colo_spec, false);
+  return this.wallet.cdManager.resolveByDesc(color_spec, true);
 }
 
 EWalletController.prototype.offer_side_to_colorvalue = function(side){
   var colordef = this.resolve_color_spec(side['color_spec'])
-  return new ColorValue({colordef: colordef, value: side['value']})
+  return new ColorValue(colordef, side['value'])
 }
 
 EWalletController.prototype.selectInputs = function(colorvalue, cb){
@@ -322,9 +326,7 @@ EWalletController.prototype.selectInputs = function(colorvalue, cb){
           })
         }
         if(change < optx.getDustThreshold()){
-          var change = new ColorValue({
-            colordef: new UncoloredColorDefinition(), value: 0
-          })
+          var change = new ColorValue(new UncoloredColorDefinition(), 0)
         }
         cb(null, selection, change)
       }
@@ -355,7 +357,7 @@ EWalletController.prototype.make_etx_spec = function(our, their){
   var c_change = null
   var value = our['value'] + extra_value
   c_utxos, c_change = this.selectInputs(
-    new ColorValue({colordef: our_color_def, value: value}),
+    new ColorValue(our_color_def, value),
     function(err, selection, change){
       c_utxos = selection
       c_change = change

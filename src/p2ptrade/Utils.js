@@ -1,4 +1,4 @@
-var request = require('browser-request') // only works in browser, if at all?
+//var request = require('browser-request') // only works in browser, if at all?
 var crypto = require('crypto')
 
 function make_random_id() {

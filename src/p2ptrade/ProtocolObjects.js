@@ -52,6 +52,7 @@ EOffer.from_data = function(data){
 
 /**
  * @class MyEOffer
+ * FIXME not needed as agent stores my_offers and their_offers seperatly
  */
 function MyEOffer(){
   EOffer.apply(this, Array.prototype.slice.call(arguments))
@@ -160,6 +161,7 @@ MyReplyEProposal.prototype.get_data = function(){
 }
 
 MyReplyEProposal.prototype.process_reply = function(reply_ep){
+  // FIXME how is ever valid to call this function???
   var rtxs = RawTx.fromHex(reply_ep.etx_data)
   this.ewctrl.publish_tx(rtxs, this.my_offer)
 }
