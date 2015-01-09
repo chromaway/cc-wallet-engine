@@ -1,8 +1,24 @@
 var util = require('util')
 var Set = require('set')
+var request = require('request');
 var make_random_id = require('./Utils').make_random_id
-var MessageIO = require('./Utils').MessageIO
 
+/**
+ * @class MessageIO
+ */
+function MessageIO(){
+  //
+}
+
+MessageIO.prototype.poll = function(url, cb){
+  request({method:'GET', url:url, json:true}, function(err, response, messages){
+    cb(err, messages)
+  })
+}
+
+MessageIO.prototype.post = function(url, content, cb){
+  request({method:'POST', url:url, json:content}, cb)
+}
 
 /**
  * @class CommBase
@@ -123,6 +139,7 @@ ThreadedComm.prototype.stop = function(){
 }
 
 module.exports = {
+  MessageIO: MessageIO,
   CommBase: CommBase,
   ThreadedComm: ThreadedComm
 }

@@ -6,27 +6,6 @@ function make_random_id() {
   return crypto.randomBytes(8).toString('hex')
 }
 
-/**
- * @class MessageIO
- */
-function MessageIO(){
-  //
-}
-
-MessageIO.prototype.poll = function(url, cb){
-  request({method:'GET', url:url, json:true}, function(err, response, messages){
-    if(err){
-      cb(err)
-    } else {
-      cb(null, messages)
-    }
-  })
-}
-
-MessageIO.prototype.post = function(url, content, cb){
-  request({method:'POST', url:url, json:content}, cb)
-}
-
 function dictLength(dictionary){
   return Object.keys(dictionary).length
 }
@@ -49,6 +28,5 @@ module.exports = {
   unixTime: unixTime,
   dictValues: dictValues,
   dictLength: dictLength,
-  MessageIO: MessageIO
 }
 
