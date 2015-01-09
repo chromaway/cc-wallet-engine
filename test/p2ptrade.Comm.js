@@ -62,18 +62,13 @@ describe('P2PTrade Comm', function(){
       var messageio = new MessageIO()
       var url = "http://p2ptrade.btx.udoidio.info/messages"
       messageio.poll(url, function(error, messages){
-        try {
-          if(error){
-            throw error
-          }
-          messages.forEach(function(message){ 
-            expect("id" in message).to.be.true
-            expect("content" in message).to.be.true
-          })
-          done()
-        } catch(e) {
-          done(e)
-        }
+        expect(error).to.be.null
+        expect(messages).to.be.an('array')
+        messages.forEach(function(message){ 
+          expect("id" in message).to.be.true
+          expect("content" in message).to.be.true
+        })
+        done()
       })
     })
 
@@ -98,11 +93,8 @@ describe('P2PTrade Comm', function(){
         timestamp: 1416070040
       }
       messageio.post(url, content, function(error){
-        if(error){
-          done(error)
-        } else {
-          done()
-        }
+        expect(error).to.be.null
+        done()
       })
     })
 
