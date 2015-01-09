@@ -313,17 +313,19 @@ EWalletController.prototype.offer_side_to_colorvalue = function(side){
 
 EWalletController.prototype.selectInputs = function(colorvalue, cb){
   var optx = new OperationalTx(this.wallet)
+  var colordef = colorvalue.getColorDefinition()
   if(colorvalue.isUncolored()){
     var feeEstimator = null // FIXME use feeEstimator
     optx.selectCoins(colorvalue, feeEstimator, function(err, selection, total){
       if(err){
         cb(err)
       } else {
-        var change = total - colorvalue
+
+        var change = total.minus(colorvalue)
         if(feeEstimator){
-          change = change - feeEstimator.estimateRequiredFee({
+          change = change.minus(feeEstimator.estimateRequiredFee({
             extraTxIns: selection.length
-          })
+          }))
         }
         if(change < optx.getDustThreshold()){
           var change = new ColorValue(new UncoloredColorDefinition(), 0)
@@ -336,7 +338,7 @@ EWalletController.prototype.selectInputs = function(colorvalue, cb){
       if(err){
         cb(err)
       } else {
-        change = total - colorvalue
+        var change = total.minus(colorvalue)
         cb(err, selection, change)
       }
     })

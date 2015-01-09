@@ -1,11 +1,13 @@
 var expect = require('chai').expect
+var async = require('async')
 var EWalletController = require('../src/p2ptrade').EWCtrl.EWalletController
-var WalletCore = require('cc-wallet-core');
+var ccCore = require('cc-wallet-core');
 var BIP39 = require('bip39')
-var ccWallet = WalletCore.Wallet
-var RawTx = WalletCore.tx.RawTx
-var ColorValue = WalletCore.cclib.ColorValue;
-var UncoloredColorDefinition = WalletCore.cclib.UncoloredColorDefinition
+var ccWallet = ccCore.Wallet
+var RawTx = ccCore.tx.RawTx
+var Coin = ccCore.coin.Coin
+var ColorValue = ccCore.cclib.ColorValue;
+var UncoloredColorDefinition = ccCore.cclib.UncoloredColorDefinition
 
 // mainnet, 3 uncolored outputs
 var btcHexTx = require('./fixtures/p2ptrade.EWCtrl.json').tx.mainnet.uncolored3
@@ -142,21 +144,19 @@ describe('P2PTrade EWCtrl', function(){
       // function is dead code?
     })
 
-    it('has sufficient balance for selectInputs test', function(done){
-      var assetdef = wallet.getAssetDefinitionByMoniker('bitcoin')
-      wallet.getBalance(assetdef, function (error, balance) {
-        expect(error).to.be.null
-        expect(balance.total > 0.001).to.be.true
-        done()
-      })
-    })
-
     it('selectInputs', function(done){
-      var colorValue = new ColorValue(new UncoloredColorDefinition(), 0.001)
-      ewctrl.selectInputs(colorValue, function(error, selection, change){
+      var colordef = new UncoloredColorDefinition()
+      var expectedCV = new ColorValue(colordef, 0.001)
+      ewctrl.selectInputs(expectedCV, function(error, inputs, change){
         expect(error).to.be.null
-        // TODO check if selection - change = colorValue
-        done()
+        async.map(inputs, function(input, cb){
+          expect(input).to.be.instanceof(Coin)
+          input.getColorValue(colordef, cb) // FIXME get ColorValue from Coin
+        }, function(error, inputCVs){
+          expect(error).to.be.null // FIXME is undefined for some reason
+          expect(ColorValue.sum(inputCVs).minus(change)).to.equal(expectedCV)
+          done()
+        })
       })
     })
 
