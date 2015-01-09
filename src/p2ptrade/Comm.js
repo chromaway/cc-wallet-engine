@@ -1,7 +1,7 @@
 var util = require('util')
 var Set = require('set')
 var make_random_id = require('./Utils').make_random_id
-var HTTPInterface = require('./Utils').HTTPInterface
+var MessageIO = require('./Utils').MessageIO
 
 
 /**
@@ -22,11 +22,12 @@ CommBase.prototype.poll_and_dispatch = function(){
 }
 
 CommBase.prototype.dispatch = function(messages){
-  for (var m = 0; m < messages.length; m++) {
-    for (var a = 0; a < this.agents.length; a++) {
-      this.agents[a].dispatch_message(messages[m])
-    }
-  }
+  var self = this
+  messages.forEach(function(message){
+    self.agents.forEach(function(agent){
+      agent.dispatch_message(message)
+    })
+  })
 }
 
 CommBase.prototype.post_message = function(content){
@@ -38,91 +39,90 @@ CommBase.prototype.poll = function(){
 }
 
 
-/**
- * @class HTTPComm
- */
-function HTTPComm(config, url){
-  CommBase.apply(this, [])
-  this.config = config
-  this.lastpoll = -1
-  this.url = url
-  this.own_msgids = new Set([])
-  this.http_interface = new HTTPInterface()
-}
-
-util.inherits(HTTPComm, CommBase)
-
-HTTPComm.prototype.post_message = function(content){
-  var msgid = make_random_id()
-  content['msgid'] = msgid
-  this.own_msgids.add(msgid)
-  return this.http_interface.post(this.url, content)
-}
-
-HTTPComm.prototype.poll = function(){
-  var ownids = this.own_msgids
-  var messages = []
-  var url = this.url
-  if(this.lastpoll === -1) {
-    interval = this.config['offer_expiry_interval']
-    url = url + "?from_timestamp_rel=" + interval
-  } else {
-    url = url + '?from_serial=' + (this.lastpoll + 1)
-  }
-  var envelopes = this.http_interface.poll(url)
-  for (var i = 0; i < envelopes.length; i++) {
-    var envelope = envelopes[i]
-    var serial = 'serial' in envelope ? envelope['serial'] : 0
-    if (serial > this.lastpoll){
-      this.lastpoll = serial
-    }
-    var content = 'content' in envelope ? envelope['content'] : null
-    if (content && content['msgid'] && !ownids.contains(content['msgid'])) {
-      messages.push(content)
-    }
-  }
-  return messages
-}
 
 
 /**
  * @class ThreadedComm
  */
 function ThreadedComm(config, url){
-  HTTPComm.apply(this, [config, url])
-  this.sleep_time = 1
-  this.send_queue = null // TODO
-  this.receive_queue = null // TODO
-  this.thread = null // TODO
-  // TODO implement
-  throw new Error("Not implemented!")
+  CommBase.apply(this, [])
+  this.config = config
+  this.lastpoll = -1
+  this.url = url
+  this.own_msgids = new Set([])
+  this.msgio = new MessageIO()
+  this.sleep_time = 1000
+  this.send_queue = []
+  this.receive_queue = []
+  this.thread = null
 }
 
-util.inherits(ThreadedComm, HTTPComm)
+util.inherits(ThreadedComm, CommBase)
+
+ThreadedComm.prototype.asyncPost = function(message){
+  var msgid = make_random_id()
+  message['msgid'] = msgid
+  this.own_msgids.add(msgid)
+  this.msgio.post(this.url, message, function(error){
+    if (error){
+      throw error // TODO how to best handle io errors?
+    }
+  })
+}
+
+ThreadedComm.prototype.asyncPoll = function(){
+  var self = this
+  var ownids = self.own_msgids
+  var url = self.url
+  if(self.lastpoll === -1) {
+    interval = self.config['offer_expiry_interval']
+    url = url + "?from_timestamp_rel=" + interval
+  } else {
+    url = url + '?from_serial=' + (self.lastpoll + 1)
+  }
+  self.msgio.poll(url, function(error, envelopes){
+    envelopes.forEach(function(envelope){
+      var serial = 'serial' in envelope ? envelope['serial'] : 0
+      if (serial > self.lastpoll){
+        self.lastpoll = serial
+      }
+      var message = 'content' in envelope ? envelope['content'] : null
+      if (message && message['msgid'] && !ownids.contains(message['msgid'])){
+        self.receive_queue.push(message)
+      }
+    })
+  })
+}
 
 ThreadedComm.prototype.post_message = function(content){
-  // TODO add to send_queue
-  throw new Error("Not implemented!")
+    this.send_queue.push(content)
+    return true
 }
 
 ThreadedComm.prototype.poll = function(){
-  // TODO empty poll queue
-  throw new Error("Not implemented!")
+  var messages = []
+  while(this.receive_queue.length != 0){
+    messages.push(this.receive_queue.shift())
+  }
+  return messages
 }
 
 ThreadedComm.prototype.start = function(){
-  // TODO start theread
-  throw new Error("Not implemented!")
+  var self = this
+  self.thread = setInterval(function () {
+    self.asyncPoll()
+    while (self.send_queue.length != 0) {
+      var message = self.send_queue.shift()
+      self.asyncPost(message)
+    }
+  }, self.sleep_time)
 }
 
 ThreadedComm.prototype.stop = function(){
-  // TODO stop theread
-  throw new Error("Not implemented!")
+  clearInterval(this.thread)
 }
-
 
 module.exports = {
   CommBase: CommBase,
-  HTTPComm: HTTPComm,
   ThreadedComm: ThreadedComm
 }

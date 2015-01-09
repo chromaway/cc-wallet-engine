@@ -29,7 +29,6 @@
     "store": "^1.3.16"
   },
   "devDependencies": {
-    "sinon": "^1.12.1",
     "chai": "^1.10.0",
     "coveralls": "^2.11.2",
     "grunt": "^0.4.5",

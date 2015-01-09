@@ -1,4 +1,4 @@
-//var request = require('browser-request') // only works in browser, if at all?
+var request = require('request') 
 var crypto = require('crypto')
 
 function make_random_id() {
@@ -7,60 +7,24 @@ function make_random_id() {
 }
 
 /**
- * @class HTTPInterface
- * TODO test it
+ * @class MessageIO
  */
-function HTTPInterface(){
+function MessageIO(){
   //
 }
 
-HTTPInterface.prototype.poll = function(url){
-  var result = []
-  request({method:'GET', url:url, json:true}, function(err, response, body){
+MessageIO.prototype.poll = function(url, cb){
+  request({method:'GET', url:url, json:true}, function(err, response, messages){
     if(err){
-      throw err
-    }
-    result = body // json parse needed?
-  })
-  return result
-
-  /*
-  var result = []
-  jQuery.ajax({
-    type: 'GET',
-    async: false,
-    url: url,
-    success:function(result){
-      result = JSON.parse(result)
+      cb(err)
+    } else {
+      cb(null, messages)
     }
   })
-  return result
-  */
 }
 
-HTTPInterface.prototype.post = function(url, content){
-  var posted = false
-  request({method:'POST', url:url, json:content}, function(err, response, body){
-    if(err){
-      throw err
-    }
-    posted = true
-  })
-  return posted
-
-  /*
-  var posted = true
-  jQuery.ajax({
-    type: 'POST',
-    async: false,
-    url: url,
-    data: JSON.stringify(content),
-    error: function (){
-      posted = false
-    }
-  })
-  return posted
-  */
+MessageIO.prototype.post = function(url, content, cb){
+  request({method:'POST', url:url, json:content}, cb)
 }
 
 function dictLength(dictionary){
@@ -85,6 +49,6 @@ module.exports = {
   unixTime: unixTime,
   dictValues: dictValues,
   dictLength: dictLength,
-  HTTPInterface: HTTPInterface
+  MessageIO: MessageIO
 }
 
