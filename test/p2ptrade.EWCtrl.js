@@ -12,6 +12,7 @@ var btcHexTx = require('./fixtures/p2ptrade.EWCtrl.json').tx.mainnet.uncolored3
 var mnemonic = require('./fixtures/p2ptrade.EWCtrl.json').wallet.mnemonic
 var password = require('./fixtures/p2ptrade.EWCtrl.json').wallet.password
 var assetdefs = require('./fixtures/p2ptrade.EWCtrl.json').assetDefinitions
+var gold = assetdefs[0]
 
 /**
  * @class MockWalletModel
@@ -100,7 +101,16 @@ describe('P2PTrade EWCtrl', function(){
         systemAssetDefinitions: assetdefs
       })
       wallet.initialize(seed)
-      wallet.network.on('connect', done)
+      wallet.network.on('connect', function(error){
+        if (error){
+          done(error)
+        } else {
+          wallet.subscribeAndSyncAllAddresses(function(error){
+            done(error)
+          })
+        }
+      })
+
       ewctrl = new EWalletController(wallet, seed)
     })
 
@@ -143,7 +153,7 @@ describe('P2PTrade EWCtrl', function(){
 
     it('selectInputs', function(done){
       var colorValue = new ColorValue(new UncoloredColorDefinition(), 0.001)
-      ewctrl.selectInputs(colorValue, function(err, selection, change){
+      ewctrl.selectInputs(colorValue, function(error, selection, change){
         expect(error).to.be.null
         // TODO check if selection - change = colorValue
         done()
