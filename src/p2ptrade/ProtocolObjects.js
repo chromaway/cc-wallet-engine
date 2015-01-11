@@ -100,13 +100,13 @@ EProposal.prototype.get_data = function(){
 /**
  * @class MyEProposal
  */
-function MyEProposal(ewctrl, orig_offer, my_offer){
+function MyEProposal(ewctrl, orig_offer, my_offer, etx_spec){
   EProposal.apply(this, [make_random_id(), ewctrl, orig_offer])
   this.my_offer = my_offer
   if(!orig_offer.matches(my_offer)){
     throw new Error("offers are incongruent")
   }
-  this.etx_spec = ewctrl.make_etx_spec(this.offer.B, this.offer.A)
+  this.etx_spec = etx_spec
   this.etx_data = undefined
 }
 

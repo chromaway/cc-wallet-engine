@@ -1,3 +1,4 @@
+var Q = require('q')
 var assert = require('assert')
 var dictValues = require('./Utils').dictValues
 var unixTime = require('./Utils').unixTime
@@ -125,13 +126,18 @@ EAgent.prototype.match_offers = function(){
 }
 
 EAgent.prototype.make_exchange_proposal = function(orig_offer, my_offer){
-  if(this.has_active_ep()){
+  var self = this
+  if(self.has_active_ep()){
     throw new Error("already have active EP (in makeExchangeProposal")
   }
-  var ep = new MyEProposal(this.ewctrl, orig_offer, my_offer)
-  this.set_active_ep(ep)
-  this.post_message(ep)
-  this.fire_event('make_ep', ep)
+  var our = orig_offer.B
+  var their = orig_offer.A
+  Q.ninvoke(self.ewctrl, 'makeEtxSpec', our, their).then(function (etxSpec) {
+    var ep = new MyEProposal(self.ewctrl, orig_offer, my_offer, etxSpec)
+    self.set_active_ep(ep)
+    self.post_message(ep)
+    self.fire_event('make_ep', ep)
+  }).done()
 }
 
 EAgent.prototype.dispatch_exchange_proposal = function(ep_data){

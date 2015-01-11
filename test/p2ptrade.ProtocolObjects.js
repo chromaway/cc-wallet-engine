@@ -14,8 +14,8 @@ function MockEWalletController(){
   this.published = []
 }
 
-MockEWalletController.prototype.make_etx_spec = function(inputs, targets){
-  return new ETxSpec(inputs, targets, null)
+MockEWalletController.prototype.makeEtxSpec = function(inputs, targets, cb){
+  cb(null, new ETxSpec(inputs, targets, null))
 }
 
 MockEWalletController.prototype.publish_tx = function(rtxs, offer){
@@ -201,28 +201,35 @@ describe('P2PTrade ProtocolObjects', function(){
       var ewctrl = new MockEWalletController()
       var a = new EOffer(1, "A", "B")
       var b = new EOffer(2, "X", "Y")
-      expect(function(){ new MyEProposal(ewctrl, a, b)}).to.throw(Error)
+      var etxSpec = { get_data: function() { return "mock_etx_spec" } }
+      expect(function(){ 
+        new MyEProposal(ewctrl, a, b, etxSpec)
+      }).to.throw(Error)
     })
 
-    it('convert to data etx_spec', function(){
+    it('convert to data etx_spec', function(done){
       var ewctrl = new MockEWalletController()
       var a = new EOffer(1, "A", "B")
       var b = new EOffer(1, "B", "A")
-      var src = new MyEProposal(ewctrl, a, b)
-      var result = src.get_data()
-      var expected = {
-          pid:src.pid, offer:a.get_data(), 
-          etx_spec: {inputs:"B", targets:"A"}
-      }
-      expect(result).to.deep.equal(expected)
-      expect(result['etx_data']).to.be.undefined
+      ewctrl.makeEtxSpec(a.B, a.A, function(error, etxSpec){
+        var src = new MyEProposal(ewctrl, a, b, etxSpec)
+        var result = src.get_data()
+        var expected = {
+            pid:src.pid, offer:a.get_data(), 
+            etx_spec: {inputs:"B", targets:"A"}
+        }
+        expect(result).to.deep.equal(expected)
+        expect(result['etx_data']).to.be.undefined
+        done()
+      })
     })
 
     it('convert to data etx_data', function(){
       var ewctrl = new MockEWalletController()
       var a = new EOffer(1, "A", "B")
       var b = new EOffer(1, "B", "A")
-      var src = new MyEProposal(ewctrl, a, b)
+      var etxSpec = { get_data: function() { return "mock_etx_spec" } }
+      var src = new MyEProposal(ewctrl, a, b, etxSpec)
       src.etx_data = "etx_data"
       var result = src.get_data()
       var expected = {pid:src.pid, offer:a.get_data(), etx_data: "etx_data"}

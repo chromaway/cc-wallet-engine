@@ -28,8 +28,8 @@ function MockEWCtrl(){
   //
 }
 
-MockEWCtrl.prototype.make_etx_spec = function(a,b){
-  return { get_data: function() { return "mock_etx_spec" } }
+MockEWCtrl.prototype.makeEtxSpec = function(a,b, cb){
+  cb(null, { get_data: function() { return "mock_etx_spec" } })
 }
 MockEWCtrl.prototype.make_reply_tx = function(etx_spec, a, b){
   return { toHex: function(){ return "mock_reply_tx_hex";} }
@@ -255,7 +255,7 @@ describe('P2PTrade Agent', function(){
     expect(agent.match_offers()).to.be.false
   })
 
-  it('match_offers finds matching', function(){
+  it('match_offers finds matching', function(done){
     my_offer = EOffer.from_data({
       "oid": "my_oid",
       "A": { "color_spec": "mock_color_spec", "value": 100000000 }, 
@@ -271,17 +271,22 @@ describe('P2PTrade Agent', function(){
     expect(agent.match_offers()).to.be.true
 
     // check if make_exchange_proposal called
-    expect(agent.has_active_ep()).to.be.true
-    expect(comm.messages.length > 0).to.be.true
+    setTimeout(function(){
+      expect(agent.has_active_ep()).to.be.true
+      expect(comm.messages.length > 0).to.be.true
+      done()
+    }, 500)
   })
 
-  it('make_exchange_proposal', function(){
+  it('make_exchange_proposal', function(done){
     var my_offer = mockMyEOffer()
     var their_offer = mockTheirEOffer()
-
     agent.make_exchange_proposal(their_offer, my_offer)
-    expect(agent.has_active_ep()).to.be.true
-    expect(comm.messages.length > 0).to.be.true
+    setTimeout(function(){
+      expect(agent.has_active_ep()).to.be.true
+      expect(comm.messages.length > 0).to.be.true
+      done()
+    }, 500)
   })
 
   it('make_exchange_proposal fails if active ep', function(){
@@ -289,20 +294,23 @@ describe('P2PTrade Agent', function(){
     expect(function(){ agent.make_exchange_proposal('o', 'm') }).to.throw(Error)
   })
 
-  it('dispatch_exchange_proposal updates active_ep if matches', function(){
+  it('dispatch_exchange_proposal updates active_ep if matches', function(done){
     // update_exchange_proposal if active_ep and matching pid
    
     var my_offer = mockMyEOffer()
     var their_offer = mockTheirEOffer()
     agent.make_exchange_proposal(their_offer, my_offer)
-    agent.active_ep.process_reply = function (ep) {
-      // monkeypatch to not process reply
-    }
-    var data = { 
-      'pid' : agent.active_ep.pid, 'offer' : mockMyEOffer(),
-      'etx_spec' : 'mock_etx_spec'
-    }
-    expect(agent.dispatch_exchange_proposal(data)).to.be.true
+    setTimeout(function(){
+      agent.active_ep.process_reply = function (ep) {
+        // monkeypatch to not process reply
+      }
+      var data = { 
+        'pid' : agent.active_ep.pid, 'offer' : mockMyEOffer(),
+        'etx_spec' : 'mock_etx_spec'
+      }
+      expect(agent.dispatch_exchange_proposal(data)).to.be.true
+      done()
+    }, 500)
   })
 
   it('dispatch_exchange_proposal accepts offer if matches', function(){
@@ -356,7 +364,8 @@ describe('P2PTrade Agent', function(){
     // setup my_ep
     var my_offer = mockMyEOffer()
     var their_offer = mockTheirEOffer()
-    var my_ep = new MyEProposal(ewctrl, their_offer, my_offer)
+    var etxSpec = { get_data: function() { return "mock_etx_spec" } }
+    var my_ep = new MyEProposal(ewctrl, their_offer, my_offer, etxSpec)
 
     // monkeypatch process_reply
     var process_reply_called = false

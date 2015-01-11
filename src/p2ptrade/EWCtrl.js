@@ -1,3 +1,4 @@
+var Q = require('q')
 var util = require('util')
 var WalletCore = require('cc-wallet-core')
 var OperationalTx = WalletCore.tx.OperationalTx
@@ -316,7 +317,7 @@ EWalletController.prototype.selectInputs = function(colorvalue, cb){
   var colordef = colorvalue.getColorDefinition()
   if(colorvalue.isUncolored()){
     var feeEstimator = null // FIXME use feeEstimator
-    optx.selectCoins(colorvalue, feeEstimator, function(err, selection, total){
+    optx.selectCoins(colorvalue, feeEstimator, function(err, coins, total){
       if(err){
         cb(err)
       } else {
@@ -324,65 +325,55 @@ EWalletController.prototype.selectInputs = function(colorvalue, cb){
         var change = total.minus(colorvalue)
         if(feeEstimator){
           change = change.minus(feeEstimator.estimateRequiredFee({
-            extraTxIns: selection.length
+            extraTxIns: coins.length
           }))
         }
         if(change < optx.getDustThreshold()){
           var change = new ColorValue(new UncoloredColorDefinition(), 0)
         }
-        cb(null, selection, change)
+        cb(null, coins, change)
       }
     })
   } else {
-    optx.selectCoins(colorvalue, null, function(err, selection, total){
+    optx.selectCoins(colorvalue, null, function(err, coins, total){
       if(err){
         cb(err)
       } else {
         var change = total.minus(colorvalue)
-        cb(err, selection, change)
+        cb(err, coins, change)
       }
     })
   }
 }
 
-EWalletController.prototype.make_etx_spec = function(our, their){
-  var our_color_def = this.resolve_color_spec(our['color_spec'])
-  var their_color_def = this.resolve_color_spec(their['color_spec'])
-
+EWalletController.prototype.makeEtxSpec = function(our, their, cb){
+  var self = this
+  var our_color_def = self.resolve_color_spec(our['color_spec'])
+  var their_color_def = self.resolve_color_spec(their['color_spec'])
   var extra_value = 0
   if(colordef.getColorType() === "uncolored"){
       // pay fee + padding for one colored outputs
       extra_value = 10000 + 8192 * 1
   }
-
-  var c_utxos = null
-  var c_change = null
-  var value = our['value'] + extra_value
-  c_utxos, c_change = this.selectInputs(
-    new ColorValue(our_color_def, value),
-    function(err, selection, change){
-      c_utxos = selection
-      c_change = change
+  var colorValue = new ColorValue(our_color_def, our['value'] + extra_value)
+  Q.ninvoke(self, 'selectInputs', colorValue).then(function (coins, change) {
+    var our_color_spec = our['color_spec']
+    var inputs = {our_color_spec: []}
+    coins.forEach(function(coin){
+      inputs[our_color_spec].push([coin.txId, coin.outIndex])
+    })
+    var address = self.getChangeAddress(our_color_def).get_address()
+    var spec = their['color_spec']
+    var targets = [[address, spec, their['value']]]
+    if(change.getValue() > 0){
+      var address = self.getChangeAddress(our_color_def).get_address()
+      targets.push([address, our_color_spec, change.get_value()])
     }
+    return new ETxSpec(inputs, targets, coins)
+  }).done(
+    function (etxSpec) { cb(null, etxSpec) },
+    function (error) { cb(error) }
   )
-
-  var our_color_spec = our['color_spec']
-  var inputs = {our_color_spec: []}
-  for(i=0; i < c_utxos.length; i++){
-    inputs[our_color_spec].push(c_utxos[i].get_outpoint())
-  }
-
-  var address = this.getChangeAddress(our_color_def).get_address()
-  var spec = their['color_spec']
-  var value = their['value']
-  var targets = [[address, spec, value]]
-  if(c_change.getValue() > 0){
-    var address = this.getChangeAddress(our_color_def).get_address()
-    var spec = our_color_spec
-    var value = c_change.get_value()
-    targets.push([address, spec, value])
-  }
-  return new ETxSpec(inputs, targets, c_utxos)
 }
 
 EWalletController.prototype.make_reply_tx = function(etx_spec, our, their){
