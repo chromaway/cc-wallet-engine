@@ -163,7 +163,7 @@ describe('P2PTrade EWCtrl', function(){
       })
     })
 
-    it('make_etx_spec', function(done){
+    it('makeEtxSpec', function(done){
       var our = {"color_spec": "", "value": 20000}
       var their = {"color_spec": gold["colorDescs"][0], "value": 20000}
       ewctrl.makeEtxSpec(our, their, function(error, etxSpec){
@@ -174,7 +174,7 @@ describe('P2PTrade EWCtrl', function(){
       })
     })
 
-    it.skip('make_reply_tx', function(){
+    it.skip('makeReplyTx', function(){
       // TODO test it
     })
 

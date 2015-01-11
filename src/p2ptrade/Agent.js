@@ -117,7 +117,9 @@ EAgent.prototype.match_offers = function(){
   dictValues(self.my_offers).forEach(function (my_offer) {
     dictValues(self.their_offers).forEach(function(their_offer){
       if(!success && my_offer.matches(their_offer)){
-        self.make_exchange_proposal(their_offer, my_offer)
+        self.makeExchangeProposal(their_offer, my_offer, function(error, ep){
+          // FIXME handle error
+        })
         success = true
       }
     })
@@ -125,30 +127,34 @@ EAgent.prototype.match_offers = function(){
   return success
 }
 
-EAgent.prototype.make_exchange_proposal = function(orig_offer, my_offer){
+EAgent.prototype.makeExchangeProposal = function(orig_offer, my_offer, cb){
   var self = this
   if(self.has_active_ep()){
-    throw new Error("already have active EP (in makeExchangeProposal")
+    return cb("Already have active exchange proposal!")
   }
   var our = orig_offer.B
   var their = orig_offer.A
-  Q.ninvoke(self.ewctrl, 'makeEtxSpec', our, their).then(function (etxSpec) {
+  self.ewctrl.makeEtxSpec(our, their, function(error, etxSpec){
+    if(error){ return cb(error) }
     var ep = new MyEProposal(self.ewctrl, orig_offer, my_offer, etxSpec)
     self.set_active_ep(ep)
     self.post_message(ep)
     self.fire_event('make_ep', ep)
-  }).done()
+    cb(null, ep)
+  })
 }
 
-EAgent.prototype.dispatch_exchange_proposal = function(ep_data){
+EAgent.prototype.dispatchExchangeProposal = function(ep_data, cb){
   var ep = new ForeignEProposal(this.ewctrl, ep_data)
   if(this.has_active_ep()){
     if(ep.pid == this.active_ep.pid){
-      return this.update_exchange_proposal(ep)
+      this.update_exchange_proposal(ep) // FIXME add cb
+      return cb(null)
     }
   } else {
     if(ep.offer.oid in this.my_offers && !this.has_active_ep()){
-      return this.accept_exchange_proposal(ep)
+      this.acceptExchangeProposal(ep, cb)
+      return
     }
   }
   // We have neither an offer nor a proposal matching
@@ -157,7 +163,7 @@ EAgent.prototype.dispatch_exchange_proposal = function(ep_data){
     // remove offer if it is in-work
     delete this.their_offers[ep.offer.oid]
   }
-  return false
+  cb(null)
 }
 
 EAgent.prototype.isValidInitialForeignExchangeProposal = function(ep, my_offer){
@@ -170,17 +176,20 @@ EAgent.prototype.isValidForeignExchangeProposalReply = function(foreign_ep, my_e
   return true
 }
 
-EAgent.prototype.accept_exchange_proposal = function(ep){
-  var my_offer = this.my_offers[ep.offer.oid]
-  if(!this.isValidInitialForeignExchangeProposal(ep, my_offer)){
+EAgent.prototype.acceptExchangeProposal = function(ep, cb){
+  var self = this
+  var my_offer = self.my_offers[ep.offer.oid]
+  if(!self.isValidInitialForeignExchangeProposal(ep, my_offer)){
     // FIXME handle invalid foreign ep
-    return false
+    cb("invalid initial foreign exchange proposal")
   }
-  var reply_ep = ep.accept(my_offer)
-  this.set_active_ep(reply_ep)
-  this.post_message(reply_ep)
-  this.fire_event('accept_ep', [ep, reply_ep])
-  return true
+  ep.accept(my_offer, function(error, replyEP){
+    if(error){ return cb(error) }
+    self.set_active_ep(replyEP)
+    self.post_message(replyEP)
+    self.fire_event('accept_ep', [ep, replyEP])
+    cb(null)
+  })
 }
 
 EAgent.prototype.clear_orders = function(ep){
@@ -222,7 +231,9 @@ EAgent.prototype.dispatch_message = function(content){
   if('oid' in content){
     this.register_their_offer(EOffer.from_data(content))
   } else if('pid' in content){
-    this.dispatch_exchange_proposal(content)
+    this.dispatchExchangeProposal(content, function(error){
+      // TODO handle error?
+    })
   }
 }
 

@@ -144,12 +144,10 @@ MyEProposal.prototype.process_reply = function(reply_ep){
 /**
  * @class MyReplyEProposal
  */
-function MyReplyEProposal(ewctrl, foreign_ep, my_offer){
+function MyReplyEProposal(ewctrl, foreign_ep, my_offer, signedTx){
   EProposal.apply(this, [foreign_ep.pid, ewctrl, foreign_ep.offer])
   this.my_offer = my_offer
-  this.tx = this.ewctrl.make_reply_tx(
-      foreign_ep.etx_spec, my_offer.A, my_offer.B
-  )
+  this.tx = signedTx
 }
 
 util.inherits(MyReplyEProposal, EProposal)
@@ -182,14 +180,25 @@ function ForeignEProposal(ewctrl, ep_data){
 
 util.inherits(ForeignEProposal, EProposal)
 
-ForeignEProposal.prototype.accept = function(my_offer){
-  if(!this.offer.is_same_as_mine(my_offer)){
+ForeignEProposal.prototype.accept = function(my_offer, cb){
+  var self = this
+  if(!self.offer.is_same_as_mine(my_offer)){
     throw new Error("incompatible offer")
   }
-  if(!this.etx_spec){
+  if(!self.etx_spec){
     throw new Error("need etx_spec")
   }
-  return new MyReplyEProposal(this.ewctrl, this, my_offer)
+  
+  var etxSpec = self.etx_spec
+  var our = my_offer.A
+  var their = my_offer.B
+  self.ewctrl.makeReplyTx(etxSpec, our, their, function(error, signedTx){
+    if(error){
+      cb(error)
+    } else {
+      cb(null, new MyReplyEProposal(self.ewctrl, self, my_offer, signedTx))
+    }
+  })
 }
 
 module.exports = {

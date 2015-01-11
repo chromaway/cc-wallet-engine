@@ -385,23 +385,19 @@ EWalletController.prototype.getNewAddress = function(colorDef){
   return this.wallet.getNewAddress(this.getSeedHex(), colorDef)
 }
 
-EWalletController.prototype.make_reply_tx = function(etx_spec, our, their){
+EWalletController.prototype.makeReplyTx = function(etx_spec, our, their, cb){
   var self = this
-  var signed_tx = null
   var op_tx_spec = new OperationalETxSpec(this)
   op_tx_spec.set_our_value_limit(our)
   op_tx_spec.prepare_inputs(ext_spec)
   op_tx_spec.prepare_targets(etx_spec, their)
-  EPOBCColorDefinition.makeComposedTx(op_tx_spec, function (err, ctx) {
-    if(!err){
-      self.wallet.transformTx(ctx, 'signed', this.seedHex, function(err, stx){
-        if(!err){
-          signed_tx = stx
-        }
-      })
+  EPOBCColorDefinition.makeComposedTx(op_tx_spec, function (error, ctx) {
+    if(!error){
+      self.wallet.transformTx(ctx, 'signed', this.seedHex, cb)
+    } else {
+      cb(error)
     }
   });
-  return signed_tx
 }
 
 EWalletController.prototype.getSeedHex = function(){

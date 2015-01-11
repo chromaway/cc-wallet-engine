@@ -31,8 +31,8 @@ function MockEWCtrl(){
 MockEWCtrl.prototype.makeEtxSpec = function(a,b, cb){
   cb(null, { get_data: function() { return "mock_etx_spec" } })
 }
-MockEWCtrl.prototype.make_reply_tx = function(etx_spec, a, b){
-  return { toHex: function(){ return "mock_reply_tx_hex";} }
+MockEWCtrl.prototype.makeReplyTx = function(etx_spec, a, b, cb){
+  cb(null, { toHex: function(){ return "mock_reply_tx_hex";} })
 }
 
 /**
@@ -63,8 +63,8 @@ function MockExchangeProposal(){
   }
 }
 
-MockExchangeProposal.prototype.accept = function(my_offer){
-  return this.reply_ep
+MockExchangeProposal.prototype.accept = function(my_offer, cb){
+  cb(null, this.reply_ep)
 }
 
 /**
@@ -270,7 +270,7 @@ describe('P2PTrade Agent', function(){
     agent.register_their_offer(their_offer)
     expect(agent.match_offers()).to.be.true
 
-    // check if make_exchange_proposal called
+    // check if makeExchangeProposal called
     setTimeout(function(){
       expect(agent.has_active_ep()).to.be.true
       expect(comm.messages.length > 0).to.be.true
@@ -278,68 +278,84 @@ describe('P2PTrade Agent', function(){
     }, 500)
   })
 
-  it('make_exchange_proposal', function(done){
+  it('makeExchangeProposal', function(done){
     var my_offer = mockMyEOffer()
     var their_offer = mockTheirEOffer()
-    agent.make_exchange_proposal(their_offer, my_offer)
-    setTimeout(function(){
+    agent.makeExchangeProposal(their_offer, my_offer, function(error, ep){
+      expect(error).to.be.null
       expect(agent.has_active_ep()).to.be.true
       expect(comm.messages.length > 0).to.be.true
       done()
-    }, 500)
+    })
   })
 
-  it('make_exchange_proposal fails if active ep', function(){
+  it('makeExchangeProposal fails if active ep', function(done){
     agent.set_active_ep("test")
-    expect(function(){ agent.make_exchange_proposal('o', 'm') }).to.throw(Error)
+    agent.makeExchangeProposal('o', 'm', function(error, ep){
+      expect(!error).to.be.false
+      done()
+    })
   })
 
-  it('dispatch_exchange_proposal updates active_ep if matches', function(done){
+  it('dispatchExchangeProposal updates active_ep if matches', function(done){
     // update_exchange_proposal if active_ep and matching pid
    
+    // FIXME how does this test anything?
     var my_offer = mockMyEOffer()
     var their_offer = mockTheirEOffer()
-    agent.make_exchange_proposal(their_offer, my_offer)
-    setTimeout(function(){
+    agent.makeExchangeProposal(their_offer, my_offer, function(error, ep){
       agent.active_ep.process_reply = function (ep) {
         // monkeypatch to not process reply
       }
+      expect(error).to.be.null
       var data = { 
-        'pid' : agent.active_ep.pid, 'offer' : mockMyEOffer(),
+        'pid' : ep.pid, 'offer' : mockMyEOffer(),
         'etx_spec' : 'mock_etx_spec'
       }
-      expect(agent.dispatch_exchange_proposal(data)).to.be.true
-      done()
-    }, 500)
+      agent.dispatchExchangeProposal(data, function(error){
+        expect(error).to.be.null
+        // FIXME shouldn't i be testing something here
+        done()
+      })
+    })
   })
 
-  it('dispatch_exchange_proposal accepts offer if matches', function(){
-    // accept_exchange_proposal if no active_ep and matching oid
+  it('dispatchExchangeProposal accepts offer if matches', function(done){
+    // acceptExchangeProposal if no active_ep and matching oid
    
     var data = { 
       'pid' : 'mock_pid', 'offer' : mockMyEOffer(),
       'etx_spec' : 'mock_etx_spec'
     }
     agent.register_my_offer(mockMyEOffer())
-    expect(agent.dispatch_exchange_proposal(data)).to.be.true
-    expect(agent.has_active_ep()).to.be.true
-    expect(comm.messages.length > 0).to.be.true
+    agent.dispatchExchangeProposal(data, function(error){
+      expect(error).to.be.null
+      expect(agent.has_active_ep()).to.be.true
+      expect(comm.messages.length > 0).to.be.true
+      done()
+    })
   })
 
-  it('dispatch_exchange_proposal removes their_offer if no matches', function(){
+  it('dispatchExchangeProposal removes their_offer if no matches', function(done){
     var data = { 'pid' : 'mock_pid', 'offer' : mockTheirEOffer() }
     agent.register_their_offer(mockTheirEOffer())
     expect(dictLength(agent.their_offers) == 1).to.be.true
-    expect(agent.dispatch_exchange_proposal(data)).to.be.false
-    expect(dictLength(agent.their_offers) == 0).to.be.true
+    agent.dispatchExchangeProposal(data, function(error){
+      expect(error).to.be.null
+      expect(dictLength(agent.their_offers) == 0).to.be.true
+      done()
+    })
   })
 
-  it('accept_exchange_proposal', function(){
+  it('acceptExchangeProposal', function(done){
     var ep = new MockExchangeProposal()
     agent.register_my_offer(mockMyEOffer())
-    expect(agent.accept_exchange_proposal(ep)).to.be.true
-    expect(agent.active_ep).to.deep.equal(ep.reply_ep)
-    expect(comm.messages).to.deep.equal([ep.reply_ep.get_data()])
+    agent.acceptExchangeProposal(ep, function(error){
+      expect(error).to.be.null
+      expect(agent.active_ep).to.deep.equal(ep.reply_ep)
+      expect(comm.messages).to.deep.equal([ep.reply_ep.get_data()])
+      done()
+    })
   })
 
   it('clear_orders', function(){
