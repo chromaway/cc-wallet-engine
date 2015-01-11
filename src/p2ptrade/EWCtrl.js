@@ -5,6 +5,7 @@ var OperationalTx = WalletCore.tx.OperationalTx
 var ColorValue = WalletCore.cclib.ColorValue
 var EPOBCColorDefinition = WalletCore.cclib.EPOBCColorDefinition;
 var UncoloredColorDefinition = WalletCore.cclib.UncoloredColorDefinition
+var ETxSpec = require('./ProtocolObjects').ETxSpec
 var Set = require('set')
 
 var bitcoin = WalletCore.bitcoin
@@ -26,13 +27,8 @@ OperationalETxSpec.prototype.get_targets = function(){
   return OperationalTx.prototype.getTargets.call(this)
 }
 
-OperationalETxSpec.prototype.getChangeAddress = function(colordef) {
-  var seedHex = ewctrl.getSeedHex()
-  return this.ewctrl.wallet.getNewAddress(seedHex, colordef)
-}
-
-OperationalETxSpec.prototype.get_change_address = function(colordef){
-  return this.getChangeAddress(colordef)
+OperationalETxSpec.prototype.getChangeAddress = function(colorDef) {
+  return this.ewctrl.getNewAddress(colorDef)
 }
 
 OperationalETxSpec.prototype.set_our_value_limit = function(our){
@@ -348,32 +344,45 @@ EWalletController.prototype.selectInputs = function(colorvalue, cb){
 
 EWalletController.prototype.makeEtxSpec = function(our, their, cb){
   var self = this
-  var our_color_def = self.resolve_color_spec(our['color_spec'])
-  var their_color_def = self.resolve_color_spec(their['color_spec'])
+  var inputs = {}
+  var ourColorDef = self.resolve_color_spec(our['color_spec'])
+  var theirColorDef = self.resolve_color_spec(their['color_spec'])
+  var our_color_spec = our['color_spec']
   var extra_value = 0
-  if(colordef.getColorType() === "uncolored"){
+
+  // tx fee (why only for btc?)
+  if(ourColorDef.getColorType() === "uncolored"){
       // pay fee + padding for one colored outputs
       extra_value = 10000 + 8192 * 1
   }
-  var colorValue = new ColorValue(our_color_def, our['value'] + extra_value)
-  Q.ninvoke(self, 'selectInputs', colorValue).then(function (coins, change) {
-    var our_color_spec = our['color_spec']
-    var inputs = {our_color_spec: []}
+
+  // get needed coins
+  var colorValue = new ColorValue(ourColorDef, our['value'] + extra_value)
+  self.selectInputs(colorValue, function(error, coins, change){
+    if(error){ return cb(error) }
+
+    // our inputs
+    inputs[our_color_spec] = []
     coins.forEach(function(coin){
       inputs[our_color_spec].push([coin.txId, coin.outIndex])
     })
-    var address = self.getChangeAddress(our_color_def).get_address()
-    var spec = their['color_spec']
-    var targets = [[address, spec, their['value']]]
+
+    // our receive address
+    var address = self.getNewAddress(theirColorDef)
+    var targets = [[address, their['color_spec'], their['value']]]
+
+    // our change
     if(change.getValue() > 0){
-      var address = self.getChangeAddress(our_color_def).get_address()
+      var address = self.getNewAddress(ourColorDef)
       targets.push([address, our_color_spec, change.get_value()])
     }
-    return new ETxSpec(inputs, targets, coins)
-  }).done(
-    function (etxSpec) { cb(null, etxSpec) },
-    function (error) { cb(error) }
-  )
+
+    cb(null, new ETxSpec(inputs, targets, coins))
+  })
+}
+
+EWalletController.prototype.getNewAddress = function(colorDef){
+  return this.wallet.getNewAddress(this.getSeedHex(), colorDef)
 }
 
 EWalletController.prototype.make_reply_tx = function(etx_spec, our, their){

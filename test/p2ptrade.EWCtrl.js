@@ -1,6 +1,8 @@
+var Q = require('q')
 var expect = require('chai').expect
 var async = require('async')
 var EWalletController = require('../src/p2ptrade').EWCtrl.EWalletController
+var ETxSpec = require('../src/p2ptrade').ProtocolObjects.ETxSpec
 var ccCore = require('cc-wallet-core');
 var BIP39 = require('bip39')
 var ccWallet = ccCore.Wallet
@@ -161,8 +163,15 @@ describe('P2PTrade EWCtrl', function(){
       })
     })
 
-    it.skip('make_etx_spec', function(){
-      // TODO test it
+    it('make_etx_spec', function(done){
+      var our = {"color_spec": "", "value": 20000}
+      var their = {"color_spec": gold["colorDescs"][0], "value": 20000}
+      ewctrl.makeEtxSpec(our, their, function(error, etxSpec){
+        expect(error).to.be.null
+        expect(etxSpec).to.be.instanceof(ETxSpec)
+        // TODO check inputs and change
+        done()
+      })
     })
 
     it.skip('make_reply_tx', function(){
