@@ -1,4 +1,3 @@
-var Q = require('q')
 var expect = require('chai').expect
 var async = require('async')
 var EWalletController = require('../src/p2ptrade').EWCtrl.EWalletController
@@ -169,13 +168,25 @@ describe('P2PTrade EWCtrl', function(){
       ewctrl.makeEtxSpec(our, their, function(error, etxSpec){
         expect(error).to.be.null
         expect(etxSpec).to.be.instanceof(ETxSpec)
-        // TODO check inputs and change
+
+        // TODO check inputs/change color and values
         done()
       })
     })
 
-    it.skip('makeReplyTx', function(){
-      // TODO test it
+    it('makeReplyTx', function(done){
+      // TODO use colors
+      var our = {"color_spec": "", "value": 20000}
+      var their = {"color_spec": "", "value": 20000}
+      ewctrl.makeEtxSpec(our, their, function(error, etxSpec){
+        expect(error).to.be.null
+        ewctrl.makeReplyTx(etxSpec, their, our, function(error, signedTx){
+          expect(error).to.be.null
+
+          // TODO check inputs, outputs and change
+          done()
+        })
+      })
     })
 
     it('getSeedHex', function(){

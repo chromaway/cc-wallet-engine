@@ -1,8 +1,9 @@
-var Q = require('q')
+var async = require('async')
 var util = require('util')
 var WalletCore = require('cc-wallet-core')
 var OperationalTx = WalletCore.tx.OperationalTx
 var ColorValue = WalletCore.cclib.ColorValue
+var ColorTarget = WalletCore.cclib.ColorTarget
 var EPOBCColorDefinition = WalletCore.cclib.EPOBCColorDefinition;
 var UncoloredColorDefinition = WalletCore.cclib.UncoloredColorDefinition
 var ETxSpec = require('./ProtocolObjects').ETxSpec
@@ -16,7 +17,7 @@ var bitcoin = WalletCore.bitcoin
  * @class OperationalETxSpec
  */
 function OperationalETxSpec(ewctrl){
-  OperationalTx.call(this)
+  OperationalTx.apply(this, [ewctrl.wallet])
   this.ewctrl = ewctrl
   this.our_value_limit = undefined
 }
@@ -36,16 +37,20 @@ OperationalETxSpec.prototype.set_our_value_limit = function(our){
   this.our_value_limit = new ColorValue(our_colordef, our['value'])
 }
 
-OperationalETxSpec.prototype.prepare_inputs = function(etx_spec){
-  this.inputs = {}
-  for (var color_spec in etx_spec.inputs) {
-    var inps = etx_spec.inputs[key]
-    var colordef = this.ewctrl.resolve_color_spec(color_spec)
-    for(i = 0; i < inps.length; i++){
-      var inp = inps[i]
+OperationalETxSpec.prototype.prepareInputs = function(etx_spec, main_cb){
+  var self = this
+  self.inputs = {}
+
+  async.map(Object.keys(etx_spec.inputs), function(color_spec, spec_cb){
+
+    var inps = etx_spec.inputs[color_spec]
+    var colordef = self.ewctrl.resolve_color_spec(color_spec)
+
+    async.map(inps, function(inp, inp_cb){
+
       var txhash = inp[0]
       var outindex = inp[1]
-      var tx = this.ewctrl.wallet.txDb.getTx(txhash)
+      var tx =  self.ewctrl.wallet.getStateManager().getTx(txhash)
       var prevout = tx.outs[outindex]
       var utxo = {
         "txhash": txhash,
@@ -53,136 +58,156 @@ OperationalETxSpec.prototype.prepare_inputs = function(etx_spec){
         "value": prevout.value,
         "script": prevout.script
       }
-      var colorvalue = null
       if(colordef.getColorType() === "uncolored"){
-        colorvalue = new ColorValue(colordef, prevout.value)
+        var colorvalue = new ColorValue(colordef, prevout.value)
+        self.addInput(colordef, colorvalue, utxo)
+        inp_cb(null)
       } else {
-        var colordata = this.ewctrl.wallet.getColorData()
+        var colordata = self.ewctrl.wallet.getColorData()
         colordata.getColorValue(txhash, outindex, colordef, function(e, cv){
-          colorvalue = cv
+          if(e){ return inp_cb(e) }
+          self.addInput(colordef, cv, utxo)
+          inp_cb(null)
         })
       }
-      if(colorvalue){
-        if(!this.inputs[colordef.getColorId()]){
-          this.inputs[colordef.getColorId()] = []
-        }
-        this.inputs[colordef.getColorId()].push([colorvalue, utxo])
-      }
+
+    }, function(error){
+      spec_cb(error)
+    })
+
+  }, function(error){
+    main_cb(error)
+  })
+}
+
+OperationalETxSpec.prototype.addInput = function(colordef, colorvalue, utxo){
+  if(colorvalue){
+    if(!this.inputs[colordef.getColorId()]){
+      this.inputs[colordef.getColorId()] = []
     }
+    this.inputs[colordef.getColorId()].push([colorvalue, utxo])
   }
 }
 
-OperationalETxSpec.prototype.prepare_targets = function(etx_spec, their){
-  this.targets = []
-  for(i = 0; i < etx_spec.targets.length; i++){
-    var address = etx_spec.targets[i][0]
-    var color_spec = etx_spec.targets[i][0]
-    var value = etx_spec.targets[i][0]
-    var colordef = this.ewctrl.resolve_color_spec(color_spec)
+OperationalETxSpec.prototype.prepareTargets = function(etxSpec, their){
+  var self = this
+  self.targets = []
+
+  // add their targets
+  etxSpec.targets.forEach(function(target){
+    var address = target[0]
+    var color_spec = target[1]
+    var value = target[2]
+    var colordef = self.ewctrl.resolve_color_spec(color_spec)
     var colorvalue = new ColorValue(colordef, value)
     var targetScript = bitcoin.Address.fromBase58Check(address).toOutputScript()
-    this.targets.push(new ColorTarget(targetScript.toHex(), colorvalue))
-  }
-  var their_colordef = this.ewctrl.resolve_color_spec(their['color_spec'])
-  var address = this.getChangeAddress(colordef)
+    self.targets.push(new ColorTarget(targetScript.toHex(), colorvalue))
+  })
+
+  // add our target
+  var their_colordef = self.ewctrl.resolve_color_spec(their['color_spec'])
+  var address = self.getChangeAddress(their_colordef)
   var targetScript = bitcoin.Address.fromBase58Check(address).toOutputScript()
   var cv = new ColorValue(their_colordef, their['value'])
-  this.targets.push(new ColorTarget(targetScript.toHex(), cv))
+  self.targets.push(new ColorTarget(targetScript.toHex(), cv))
 }
 
-OperationalETxSpec.prototype.select_uncolored_coins = function(
-      colorvalue, feeEstimator
+/*
+OperationalETxSpec.prototype.selectUncoloredCoins = function(
+      colorvalue, feeEstimator, cb
     ){
-  var zero = new ColorValue(new UncoloredColorDefinition(), 0)
+  var uncoloredColorDef = new UncoloredColorDefinition()
+  var zero = new ColorValue(uncoloredColorDef, 0)
   var selected_inputs = []
   var selected_value = zero.clone()
   var needed = zero.clone()
+
+  // add fee
   if(feeEstimator){
     // FIXME give feeEstimator required args!
     needed = colorvalue.plus(feeEstimator.estimateRequiredFee())
   } else {
     needed = colorvalue
   }
+
   var color_id = 0
   if(color_id in this.inputs){
+
     var inputs = this.inputs[color_id]
     var total = zero.clone()
-    for(i=0; i < inputs.length; i++){
-      total = total.plus(inputs[i][0])
-    }
+    inputs.foreach(function(input){
+      total = total.plus(input[0])
+    })
+
     needed = needed.minus(total)
-    for(i=0; i < inputs.length; i++){
-      selected_inputs.push(inputs[i][1])
-    }
+    inputs.foreach(function(input){
+      selected_inputs.push(input[1])
+    })
     selected_value = selected_value.plus(total)
   }
   if(needed.getValue() > 0){
-    var value_limit = new ColorValue(
-        new UncoloredColorDefinition(), 10000+8192*2
-    )
+    var value_limit = new ColorValue(uncoloredColorDef, 10000+8192*2)
     if(this.our_value_limit.isUncolored()){
       value_limit = value_limit.plus(this.our_value_limit)
     }
     if(needed.getValue() > value_limit.getValue()){
-      throw new Error(
+      return cb(new Error(
           "Insufficient Funds, exceeded limits: " + needed +
           " requested, " + value_limit + " found" % (needed, value_limit)
-      )
+      ))
     }
-    OperationalTx.prototype.selectCoins.call(
-        this, colorvalue.minus(selected_value), feeEstimator,
-        function (err, coins, value){
-          selected_value = selected_value.plus(value)
-          for(i=0; i < coins.length; i++){
-            selected_inputs.push(coins[i])
-          }
-        }
+    var needed = colorvalue.minus(selected_value)
+    OperationalTx.prototype.selectCoins.call(this, needed, feeEstimator,
+      function (err, coins, value){
+        selected_value = selected_value.plus(value)
+        coins.forEach(function(coin){
+          selected_inputs.push(coin)
+        })
+        cb(null, selected_inputs, selected_value)
+      }
     )
+  } else {
+    cb(null, selected_inputs, selected_value)
   }
-  return [selected_inputs, selected_value]
 }
 
 OperationalETxSpec.prototype.selectCoins = function(colorValue, feeEstimator, cb){
   //self._validate_select_coins_parameters(colorValue, feeEstimator)
-  colordef = colorValue.getColorDefinition()
+  var colordef = colorValue.getColorDefinition()
+  var color_id = colordef.getColorId()
+  var zero = new ColorValue(colordef, 0)
+
   if(colordef.getColorType() === "uncolored"){
-    var data = this.select_uncolored_coins(colorValue, feeEstimator)
-    cb(null, data[0], data[1])
-    return undefined
+    return this.selectUncoloredCoins(colorValue, feeEstimator, cb)
   }
-  color_id = colordef.getColorId()
+
   if(color_id in this.inputs){
     var inputs = this.inputs[color_id]
     var total = zero.clone()
-    for(i=0; i < inputs.length; i++){
-      total = total.plus(inputs[i][0])
-    }
+    inputs.forEach(function(input){
+      total = total.plus(input[0])
+    })
     if(total.getValue() < colorValue.getValue()){
-      var err = (
-          "Insufficient funds, not enough coins: " + colorValue +
-          " requested, " + total + " found"
-      )
-      cb(err, undefined, undefined)
-      return undefined
+      return cb(new Error(
+        "Insufficient funds, not enough coins: " + colorValue +
+        " requested, " + total + " found"
+      ))
     }
-
     var coins = []
-    for(i=0; i < inputs.length; i++){
-      coins.push(inputs[i][1])
-    }
-    cb(null, coins, total)
-    return undefined
+    inputs.forEach(function(input){
+      coins.push(input[1])
+    })
+    return cb(null, coins, total)
   }
   if(colorValue.getValue() > this.our_value_limit.getValue()){
-    var err = (
-        "Insufficient funds " + colorValue + " requested, " +
-        this.our_value_limit + " found"
-    )
-    cb(err, undefined, undefined)
-    return undefined
+    return cb(new Error(
+      "Insufficient funds " + colorValue + " requested, " +
+      this.our_value_limit + " found"
+    ))
   }
   OperationalTx.prototype.selectCoins(this, colorValue, feeEstimator, cb)
 }
+*/
 
 /**
  * @class EWalletController
@@ -385,19 +410,18 @@ EWalletController.prototype.getNewAddress = function(colorDef){
   return this.wallet.getNewAddress(this.getSeedHex(), colorDef)
 }
 
-EWalletController.prototype.makeReplyTx = function(etx_spec, our, their, cb){
+EWalletController.prototype.makeReplyTx = function(etxSpec, our, their, cb){
   var self = this
-  var op_tx_spec = new OperationalETxSpec(this)
-  op_tx_spec.set_our_value_limit(our)
-  op_tx_spec.prepare_inputs(ext_spec)
-  op_tx_spec.prepare_targets(etx_spec, their)
-  EPOBCColorDefinition.makeComposedTx(op_tx_spec, function (error, ctx) {
-    if(!error){
-      self.wallet.transformTx(ctx, 'signed', this.seedHex, cb)
-    } else {
-      cb(error)
-    }
-  });
+  var opTxSpec = new OperationalETxSpec(self)
+  opTxSpec.set_our_value_limit(our)
+  opTxSpec.prepareInputs(etxSpec, function(error){ // adds their inputs to opTxSpec
+    if(error){ return cb(error) }
+    opTxSpec.prepareTargets(etxSpec, their)
+    EPOBCColorDefinition.makeComposedTx(opTxSpec, function (error, ctx) {
+      if(error){ return cb(error) }
+      self.wallet.transformTx(ctx, 'signed', self.seedHex, cb)
+    });
+  })
 }
 
 EWalletController.prototype.getSeedHex = function(){
