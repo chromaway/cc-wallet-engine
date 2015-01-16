@@ -43,7 +43,7 @@ MockAgent.prototype.reset = function(){
   this.dispatch_log = []
 }
 
-MockAgent.prototype.dispatch_message = function(content){
+MockAgent.prototype.dispatchMessage = function(content){
   this.dispatch_log.push(content)
 }
 
@@ -139,7 +139,7 @@ describe('P2PTrade Comm', function(){
 
     it('post message content', function(done){
       var content = {test:"TEST"}
-      comm.post_message(content)
+      comm.postMessage(content)
       setTimeout(function(){
         var posted = msgio.post_log[0]
         content['msgid'] = posted['data']['msgid']
@@ -149,16 +149,16 @@ describe('P2PTrade Comm', function(){
     })
 
     it('post massage saves msgid', function(done){
-      comm.post_message({})
+      comm.postMessage({})
       setTimeout(function(){
         var posted = msgio.post_log[0]
-        expect(comm.own_msgids.contains(posted['data']['msgid'])).to.be.true
+        expect(comm.ownMsgIDs.contains(posted['data']['msgid'])).to.be.true
         done()
       }, comm.sleep_time * 1.5)
     })
 
     it('post message url', function(done){
-      comm.post_message({})
+      comm.postMessage({})
       setTimeout(function(){
         var posted = msgio.post_log[0]
         expect(url).to.deep.equal(posted['url'])
@@ -167,7 +167,7 @@ describe('P2PTrade Comm', function(){
     })
 
     it('post massage sets msgid', function(done){
-      comm.post_message({})
+      comm.postMessage({})
       setTimeout(function(){
         var posted = msgio.post_log[0]
         expect('msgid' in posted['data']).to.be.true
@@ -186,7 +186,7 @@ describe('P2PTrade Comm', function(){
 
     it('poll and dispatch', function(done){
       setTimeout(function(){
-        comm.poll_and_dispatch()
+        comm.pollAndDispatch()
         var expected = [MESSAGES[0]["content"], MESSAGES[1]["content"]]
         expect(agent.dispatch_log).to.deep.equal(expected)
         done()

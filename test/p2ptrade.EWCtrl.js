@@ -11,6 +11,7 @@ var ColorValue = ccCore.cclib.ColorValue;
 var UncoloredColorDefinition = ccCore.cclib.UncoloredColorDefinition
 var Transaction = ccCore.cclib.bitcoin.Transaction
 
+// fixtures
 var fixtures = require('./fixtures/p2ptrade.EWCtrl.json')
 var btcHexTx = fixtures.tx.uncolored2.raw // mainnet, 2 uncolored outputs
 var mnemonic = fixtures.wallet.alice.mnemonic
@@ -40,17 +41,12 @@ describe('P2PTrade EWCtrl', function(){
    */
   describe.skip('OperationalETxSpec', function(){
 
-    it('get_targets', function(){
-      // TODO test it
-      expect(false).to.be.true
-    })
-
     it('getChangeAddress', function(){
       // TODO test it
       expect(false).to.be.true
     })
 
-    it('set_our_value_limit', function(){
+    it('setOurValueLimit', function(){
       // TODO test it
       expect(false).to.be.true
     })
@@ -122,10 +118,10 @@ describe('P2PTrade EWCtrl', function(){
       wallet = undefined
     })
 
-    it('publish_tx', function(){
+    it('publishTX', function(){
       var my_offer = null
       var rawTx = RawTx.fromHex(btcHexTx)
-      mw_ewctrl.publish_tx(rawTx, my_offer)
+      mw_ewctrl.publishTX(rawTx, my_offer)
       expect(mockwallet.txSent.length).to.equal(1)
     })
 
@@ -133,13 +129,13 @@ describe('P2PTrade EWCtrl', function(){
       // TODO test it
     })
 
-    it('resolve_color_spec', function(){
-      var desc = ewctrl.resolve_color_spec(gold['colorDescs'][0])
+    it('resolveColorSpec', function(){
+      var desc = ewctrl.resolveColorSpec(gold['colorDescs'][0])
       expect(desc.getColorId() > 0).to.be.true
       expect(desc.getDesc()).to.deep.equal(gold['colorDescs'][0])
     })
 
-    it.skip('offer_side_to_colorvalue', function(){
+    it.skip('offerSideToColorValue', function(){
       // TODO test it
       // function is dead code?
     })

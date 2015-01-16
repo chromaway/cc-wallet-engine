@@ -6,7 +6,7 @@ var MyEOffer = require('../src/p2ptrade').ProtocolObjects.MyEOffer
 var dictLength = require('../src/p2ptrade').Utils.dictLength
 
 function mockMyEOffer(){
-  return EOffer.from_data({
+  return EOffer.fromData({
     "oid": "test_my_offer",
     "A": { "color_spec": "", "value": 100000000 },
     "B": { "color_spec": "mock_color_spec", "value": 100000000 }
@@ -14,7 +14,7 @@ function mockMyEOffer(){
 }
 
 function mockTheirEOffer(){
-  return EOffer.from_data({
+  return EOffer.fromData({
     "oid": "test_their_offer",
     "A": { "color_spec": "mock_color_spec", "value": 100000000 },
     "B": { "color_spec": "", "value": 100000000 }
@@ -29,7 +29,7 @@ function MockEWCtrl(){
 }
 
 MockEWCtrl.prototype.makeEtxSpec = function(a,b, cb){
-  cb(null, { get_data: function() { return "mock_etx_spec" } })
+  cb(null, { getData: function() { return "mock_etx_spec" } })
 }
 MockEWCtrl.prototype.makeReplyTx = function(etx_spec, a, b, cb){
   cb(null, { toHex: function(){ return "mock_reply_tx_hex";} })
@@ -47,7 +47,7 @@ MockComm.prototype.addAgent = function(agent){
   this.agents.push(agent)
 }
 
-MockComm.prototype.post_message = function(message){
+MockComm.prototype.postMessage = function(message){
   this.messages.push(message)
 }
 
@@ -57,7 +57,7 @@ MockComm.prototype.post_message = function(message){
 function MockExchangeProposal(){
   this.offer = { oid: "testoid" }
   this.reply_ep = {
-    get_data: function(){
+    getData: function(){
       return "mock_ep_data"
     }
   }
@@ -94,88 +94,88 @@ describe('P2PTrade Agent', function(){
   it('fire_event handles correct type', function(){
     var handled = false
     var received = null
-    agent.set_event_handler('b', function(data){
+    agent.setEventHandler('b', function(data){
       received = data
       handled = true
     })
-    agent.fire_event('b', "test")
+    agent.fireEvent('b', "test")
     expect(handled).to.deep.equal(true)
     expect(received).to.deep.equal("test")
   })
 
   it('fire_event ignores incorrect type', function(){
     var handled = false
-    agent.set_event_handler('a', function(data){
+    agent.setEventHandler('a', function(data){
       handled = true
     })
-    agent.fire_event('b', "test")
+    agent.fireEvent('b', "test")
     expect(handled).to.deep.equal(false)
   })
 
-  it('set_active_ep clears', function(){
-    agent.ep_timeout = "test"
-    agent.active_ep = "test"
-    agent.set_active_ep(null)
-    expect(agent.ep_timeout).to.be.null
-    expect(agent.active_ep).to.be.null
+  it('setActiveEP clears', function(){
+    agent.epTimeout = "test"
+    agent.activeEP = "test"
+    agent.setActiveEP(null)
+    expect(agent.epTimeout).to.be.null
+    expect(agent.activeEP).to.be.null
   })
 
-  it('set_active_ep updates', function(){
+  it('setActiveEP updates', function(){
     var config = { ep_expiry_interval: 0 }
     var agent = new EAgent(null, config, new MockComm())
 
-    agent.set_active_ep("test")
-    expect(agent.active_ep).to.deep.equal("test")
-    expect(agent.ep_timeout > 1400000000).to.be.true
+    agent.setActiveEP("test")
+    expect(agent.activeEP).to.deep.equal("test")
+    expect(agent.epTimeout > 1400000000).to.be.true
   })
 
-  it('has_active_ep', function(){
-    expect(agent.has_active_ep()).to.be.false
-    agent.set_active_ep("test")
-    expect(agent.has_active_ep()).to.be.true
+  it('hasActiveEP', function(){
+    expect(agent.hasActiveEP()).to.be.false
+    agent.setActiveEP("test")
+    expect(agent.hasActiveEP()).to.be.true
   })
 
-  it('has_active_ep checks timeout', function(){
+  it('hasActiveEP checks timeout', function(){
     var config = { ep_expiry_interval: -42 }
     var agent = new EAgent(null, config, new MockComm())
 
-    expect(agent.has_active_ep()).to.be.false
-    agent.set_active_ep("test")
-    expect(agent.has_active_ep()).to.be.false
+    expect(agent.hasActiveEP()).to.be.false
+    agent.setActiveEP("test")
+    expect(agent.hasActiveEP()).to.be.false
   })
 
   it('service_my_offers ignores non auto_post', function(){
-    agent.register_my_offer(mockMyEOffer())
-    agent.service_my_offers()
+    agent.registerMyOffer(mockMyEOffer())
+    agent.serviceMyOffers()
     expect(comm.messages.length == 0).to.be.true
   })
 
-  it('service_my_offers ignores active_ep.my_offer', function(){
-    var my_offer = MyEOffer.from_data({
+  it('service_my_offers ignores activeEP.my_offer', function(){
+    var my_offer = MyEOffer.fromData({
       "oid": "test_my_offer",
       "A": { "color_spec": "", "value": 100000000 },
       "B": { "color_spec": "mock_color_spec", "value": 100000000 }
     })
-    agent.register_my_offer(my_offer)
-    agent.set_active_ep({my_offer: my_offer})
-    agent.service_my_offers()
+    agent.registerMyOffer(my_offer)
+    agent.setActiveEP({my_offer: my_offer})
+    agent.serviceMyOffers()
     expect(comm.messages.length == 0).to.be.true
   })
 
   it('service_my_offers', function(){
-    var my_offer = MyEOffer.from_data({
+    var my_offer = MyEOffer.fromData({
       "oid": "test_my_offer",
       "A": { "color_spec": "", "value": 100000000 },
       "B": { "color_spec": "mock_color_spec", "value": 100000000 }
     })
-    agent.register_my_offer(my_offer)
-    agent.service_my_offers()
+    agent.registerMyOffer(my_offer)
+    agent.serviceMyOffers()
     expect(comm.messages.length == 1).to.be.true // expired by default
-    agent.service_my_offers()
+    agent.serviceMyOffers()
     expect(comm.messages.length == 1).to.be.true // ignores unexpired
   })
 
-  it('service_their_offers removes expired', function(){
+  it('serviceTheirOffers removes expired', function(){
     config = { 
       ep_expiry_interval: 42, 
       offer_expiry_interval: -42,
@@ -184,95 +184,95 @@ describe('P2PTrade Agent', function(){
     ewctrl = new MockEWCtrl()
     comm = new MockComm()
     agent = new EAgent(ewctrl, config, comm)
-    agent.register_their_offer(mockTheirEOffer())
-    agent.service_their_offers()
-    expect(dictLength(agent.their_offers) == 0).to.be.true
+    agent.registerTheirOffer(mockTheirEOffer())
+    agent.serviceTheirOffers()
+    expect(dictLength(agent.theirOffers) == 0).to.be.true
   })
 
-  it('service_their_offers ignores unexpired', function(){
-    agent.register_their_offer(mockTheirEOffer())
-    agent.service_their_offers()
-    expect(dictLength(agent.their_offers) == 1).to.be.true
+  it('serviceTheirOffers ignores unexpired', function(){
+    agent.registerTheirOffer(mockTheirEOffer())
+    agent.serviceTheirOffers()
+    expect(dictLength(agent.theirOffers) == 1).to.be.true
   })
 
-  it('register_my_offer', function(){
-    expect(agent.my_offers).to.deep.equal({}) // previously empty
-    expect(agent.offers_updated).to.be.false // previously unset
+  it('registerMyOffer', function(){
+    expect(agent.myOffers).to.deep.equal({}) // previously empty
+    expect(agent.offersUpdated).to.be.false // previously unset
     var offer = mockMyEOffer()
-    agent.register_my_offer(offer)
-    expect(agent.offers_updated).to.be.true // sets flag
-    expect(agent.my_offers).to.deep.equal({test_my_offer:offer}) // offer saved
+    agent.registerMyOffer(offer)
+    expect(agent.offersUpdated).to.be.true // sets flag
+    expect(agent.myOffers).to.deep.equal({test_my_offer:offer}) // offer saved
   })
 
-  it('cancel_my_offer clears active_ep', function(){
+  it('cancel_my_offer clears activeEP', function(){
     var offer = mockMyEOffer()
     var ep = { offer: offer, my_offer: offer }
-    agent.set_active_ep(ep)
-    agent.cancel_my_offer(offer)
-    expect(agent.has_active_ep()).to.be.false
+    agent.setActiveEP(ep)
+    agent.cancelMyOffer(offer)
+    expect(agent.hasActiveEP()).to.be.false
   })
 
-  it('cancel_my_offer clears my_offers', function(){
+  it('cancel_my_offer clears myOffers', function(){
     var offer = mockMyEOffer()
-    agent.register_my_offer(offer)
-    agent.cancel_my_offer(offer)
-    expect(agent.my_offers).to.deep.equal({})
+    agent.registerMyOffer(offer)
+    agent.cancelMyOffer(offer)
+    expect(agent.myOffers).to.deep.equal({})
   })
 
-  it('register_their_offer', function(){
-    expect(agent.my_offers).to.deep.equal({}) // previously empty
-    expect(agent.offers_updated).to.be.false // previously unset
+  it('registerTheirOffer', function(){
+    expect(agent.myOffers).to.deep.equal({}) // previously empty
+    expect(agent.offersUpdated).to.be.false // previously unset
     var offer = { oid:"test" }
 
     // monkeypatch refresh
     var refresh_interval = 0
     offer.refresh = function(interval){ refresh_interval = interval }
 
-    agent.register_their_offer(offer)
+    agent.registerTheirOffer(offer)
     expect(refresh_interval).to.deep.equal(42) // called refresh
-    expect(agent.offers_updated).to.be.true // sets flag
-    expect(agent.their_offers).to.deep.equal({test:offer}) // offer saved
+    expect(agent.offersUpdated).to.be.true // sets flag
+    expect(agent.theirOffers).to.deep.equal({test:offer}) // offer saved
   })
 
-  it('match_offers does nothing if has active ep ', function(){
-    agent.set_active_ep("test")
-    expect(agent.match_offers()).to.be.false
+  it('matchOffers does nothing if has active ep ', function(){
+    agent.setActiveEP("test")
+    expect(agent.matchOffers()).to.be.false
   })
 
-  it('match_offers ignores unmatching', function(){
-    my_offer = EOffer.from_data({
+  it('matchOffers ignores unmatching', function(){
+    my_offer = EOffer.fromData({
       "oid": "my_oid",
       "A": { "color_spec": "mock_my_color_spec", "value": 100000000 }, 
       "B": { "color_spec": "", "value": 100000000 }
     })
-    their_offer = EOffer.from_data({
+    their_offer = EOffer.fromData({
       "oid": "their_oid",
       "A": { "color_spec": "", "value": 100000000 },
       "B": { "color_spec": "mock_their_color_spec", "value": 100000000 }
     })
-    agent.register_my_offer(my_offer)
-    agent.register_their_offer(their_offer)
-    expect(agent.match_offers()).to.be.false
+    agent.registerMyOffer(my_offer)
+    agent.registerTheirOffer(their_offer)
+    expect(agent.matchOffers()).to.be.false
   })
 
-  it('match_offers finds matching', function(done){
-    my_offer = EOffer.from_data({
+  it('matchOffers finds matching', function(done){
+    my_offer = EOffer.fromData({
       "oid": "my_oid",
       "A": { "color_spec": "mock_color_spec", "value": 100000000 }, 
       "B": { "color_spec": "", "value": 100000000 }
     })
-    their_offer = EOffer.from_data({
+    their_offer = EOffer.fromData({
       "oid": "their_oid",
       "A": { "color_spec": "", "value": 100000000 },
       "B": { "color_spec": "mock_color_spec", "value": 100000000 }
     })
-    agent.register_my_offer(my_offer)
-    agent.register_their_offer(their_offer)
-    expect(agent.match_offers()).to.be.true
+    agent.registerMyOffer(my_offer)
+    agent.registerTheirOffer(their_offer)
+    expect(agent.matchOffers()).to.be.true
 
     // check if makeExchangeProposal called
     setTimeout(function(){
-      expect(agent.has_active_ep()).to.be.true
+      expect(agent.hasActiveEP()).to.be.true
       expect(comm.messages.length > 0).to.be.true
       done()
     }, 500)
@@ -283,28 +283,28 @@ describe('P2PTrade Agent', function(){
     var their_offer = mockTheirEOffer()
     agent.makeExchangeProposal(their_offer, my_offer, function(error, ep){
       expect(error).to.be.null
-      expect(agent.has_active_ep()).to.be.true
+      expect(agent.hasActiveEP()).to.be.true
       expect(comm.messages.length > 0).to.be.true
       done()
     })
   })
 
   it('makeExchangeProposal fails if active ep', function(done){
-    agent.set_active_ep("test")
+    agent.setActiveEP("test")
     agent.makeExchangeProposal('o', 'm', function(error, ep){
       expect(!error).to.be.false
       done()
     })
   })
 
-  it('dispatchExchangeProposal updates active_ep if matches', function(done){
-    // update_exchange_proposal if active_ep and matching pid
+  it('dispatchExchangeProposal updates activeEP if matches', function(done){
+    // update_exchange_proposal if activeEP and matching pid
    
     // FIXME how does this test anything?
     var my_offer = mockMyEOffer()
     var their_offer = mockTheirEOffer()
     agent.makeExchangeProposal(their_offer, my_offer, function(error, ep){
-      agent.active_ep.process_reply = function (ep) {
+      agent.activeEP.processReply = function (ep) {
         // monkeypatch to not process reply
       }
       expect(error).to.be.null
@@ -321,16 +321,16 @@ describe('P2PTrade Agent', function(){
   })
 
   it('dispatchExchangeProposal accepts offer if matches', function(done){
-    // acceptExchangeProposal if no active_ep and matching oid
+    // acceptExchangeProposal if no activeEP and matching oid
    
     var data = { 
       'pid' : 'mock_pid', 'offer' : mockMyEOffer(),
       'etx_spec' : 'mock_etx_spec'
     }
-    agent.register_my_offer(mockMyEOffer())
+    agent.registerMyOffer(mockMyEOffer())
     agent.dispatchExchangeProposal(data, function(error){
       expect(error).to.be.null
-      expect(agent.has_active_ep()).to.be.true
+      expect(agent.hasActiveEP()).to.be.true
       expect(comm.messages.length > 0).to.be.true
       done()
     })
@@ -338,75 +338,77 @@ describe('P2PTrade Agent', function(){
 
   it('dispatchExchangeProposal removes their_offer if no matches', function(done){
     var data = { 'pid' : 'mock_pid', 'offer' : mockTheirEOffer() }
-    agent.register_their_offer(mockTheirEOffer())
-    expect(dictLength(agent.their_offers) == 1).to.be.true
+    agent.registerTheirOffer(mockTheirEOffer())
+    expect(dictLength(agent.theirOffers) == 1).to.be.true
     agent.dispatchExchangeProposal(data, function(error){
       expect(error).to.be.null
-      expect(dictLength(agent.their_offers) == 0).to.be.true
+      expect(dictLength(agent.theirOffers) == 0).to.be.true
       done()
     })
   })
 
   it('acceptExchangeProposal', function(done){
     var ep = new MockExchangeProposal()
-    agent.register_my_offer(mockMyEOffer())
+    agent.registerMyOffer(mockMyEOffer())
     agent.acceptExchangeProposal(ep, function(error){
       expect(error).to.be.null
-      expect(agent.active_ep).to.deep.equal(ep.reply_ep)
-      expect(comm.messages).to.deep.equal([ep.reply_ep.get_data()])
+      expect(agent.activeEP).to.deep.equal(ep.reply_ep)
+      expect(comm.messages).to.deep.equal([ep.reply_ep.getData()])
       done()
     })
   })
 
-  it('clear_orders', function(){
+  it('clearOrders', function(){
     var my_offer = mockMyEOffer()
-    agent.my_offers = { "test_my_offer": my_offer }
+    agent.myOffers = { "test_my_offer": my_offer }
     var their_offer = mockTheirEOffer()
-    agent.their_offers = { "test_their_offer": their_offer }
+    agent.theirOffers = { "test_their_offer": their_offer }
 
     // test clear MyEProposal
-    agent.clear_orders(new MyEProposal(ewctrl, their_offer, my_offer))
-    expect(agent.my_offers).to.deep.equal({})
-    expect(agent.their_offers).to.deep.equal({})
+    agent.clearOrders(new MyEProposal(ewctrl, their_offer, my_offer))
+    expect(agent.myOffers).to.deep.equal({})
+    expect(agent.theirOffers).to.deep.equal({})
 
     // test clear other
-    agent.my_offers = { "test_my_offer": my_offer}
-    agent.clear_orders({ offer: my_offer })
-    expect(agent.my_offers).to.deep.equal({})
+    agent.myOffers = { "test_my_offer": my_offer}
+    agent.clearOrders({ offer: my_offer })
+    expect(agent.myOffers).to.deep.equal({})
   })
 
-  it('update_exchange_proposal', function(){
+  it('finishExchangeProposal', function(done){
 
     // setup my_ep
     var my_offer = mockMyEOffer()
     var their_offer = mockTheirEOffer()
-    var etxSpec = { get_data: function() { return "mock_etx_spec" } }
+    var etxSpec = { getData: function() { return "mock_etx_spec" } }
     var my_ep = new MyEProposal(ewctrl, their_offer, my_offer, etxSpec)
 
-    // monkeypatch process_reply
+    // monkeypatch processReply
     var process_reply_called = false
-    my_ep.process_reply = function(ep){ process_reply_called = true }
+    my_ep.processReply = function(ep){ process_reply_called = true }
 
     var reply_ep = {
       pid: "reply_pid",
-      process_reply: function(ep){},
+      processReply: function(ep){},
       offer: mockMyEOffer()
     }
 
-    agent.set_active_ep(my_ep)
-    agent.update_exchange_proposal(reply_ep)
-    expect(process_reply_called).to.be.true
-    expect(agent.has_active_ep()).to.be.false
-    expect(comm.messages.length > 0).to.be.true
+    agent.setActiveEP(my_ep)
+    agent.finishExchangeProposal(reply_ep, function(error){
+      expect(process_reply_called).to.be.true
+      expect(agent.hasActiveEP()).to.be.false
+      expect(comm.messages.length > 0).to.be.true
+      done()
+    })
   })
 
-  it('post_message', function(){
-    var obj = { get_data: function(){ return "test"} }
-    agent.post_message(obj)
+  it('postMessage', function(){
+    var obj = { getData: function(){ return "test"} }
+    agent.postMessage(obj)
     expect(comm.messages).to.deep.equal(["test"])
   })
 
-  it.skip('dispatch_message', function(){
+  it.skip('dispatchMessage', function(){
     // TODO how to test it?
     expect(false).to.be.true
   })

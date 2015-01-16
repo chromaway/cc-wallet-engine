@@ -1,7 +1,7 @@
 var util = require('util')
 var Set = require('set')
 var request = require('request');
-var make_random_id = require('./Utils').make_random_id
+var makeRandomId = require('./Utils').makeRandomId
 
 /**
  * @class MessageIO
@@ -33,7 +33,7 @@ CommBase.prototype.addAgent = function(agent){
 }
 
 
-CommBase.prototype.poll_and_dispatch = function(){
+CommBase.prototype.pollAndDispatch = function(){
   this.dispatch(this.poll())
 }
 
@@ -41,12 +41,12 @@ CommBase.prototype.dispatch = function(messages){
   var self = this
   messages.forEach(function(message){
     self.agents.forEach(function(agent){
-      agent.dispatch_message(message)
+      agent.dispatchMessage(message)
     })
   })
 }
 
-CommBase.prototype.post_message = function(content){
+CommBase.prototype.postMessage = function(content){
   throw new Error("Called abstract method!")
 }
 
@@ -65,7 +65,7 @@ function ThreadedComm(config, url){
   this.config = config
   this.lastpoll = -1
   this.url = url
-  this.own_msgids = new Set([])
+  this.ownMsgIDs = new Set([])
   this.msgio = new MessageIO()
   this.sleep_time = 1000
   this.send_queue = []
@@ -76,9 +76,9 @@ function ThreadedComm(config, url){
 util.inherits(ThreadedComm, CommBase)
 
 ThreadedComm.prototype.asyncPost = function(message){
-  var msgid = make_random_id()
+  var msgid = makeRandomId()
   message['msgid'] = msgid
-  this.own_msgids.add(msgid)
+  this.ownMsgIDs.add(msgid)
   this.msgio.post(this.url, message, function(error){
     if (error){
       throw error // TODO how to best handle io errors?
@@ -88,7 +88,7 @@ ThreadedComm.prototype.asyncPost = function(message){
 
 ThreadedComm.prototype.asyncPoll = function(){
   var self = this
-  var ownids = self.own_msgids
+  var ownids = self.ownMsgIDs
   var url = self.url
   if(self.lastpoll === -1) {
     interval = self.config['offer_expiry_interval']
@@ -110,7 +110,7 @@ ThreadedComm.prototype.asyncPoll = function(){
   })
 }
 
-ThreadedComm.prototype.post_message = function(content){
+ThreadedComm.prototype.postMessage = function(content){
     this.send_queue.push(content)
     return true
 }

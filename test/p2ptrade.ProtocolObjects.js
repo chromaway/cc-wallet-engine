@@ -65,42 +65,42 @@ describe('P2PTrade ProtocolObjects', function(){
     it('unexpired shift', function(){
       var eo = new EOffer(0, null, null)
       eo.refresh(0)
-      expect(eo.expired_shift(42)).to.be.true
-      expect(eo.expired_shift(-42)).to.be.false
+      expect(eo.expiredShift(42)).to.be.true
+      expect(eo.expiredShift(-42)).to.be.false
     })
 
     it('convert from data', function(){
       var data = {oid: 1, A:"A", B:"B"}
-      var result = EOffer.from_data(data)
+      var result = EOffer.fromData(data)
       var expected = new EOffer(1, "A", "B")
       expect(result).to.deep.equal(expected)
     })
 
     it('convert to data', function(){
       var src = new EOffer(1, "A", "B")
-      var result = src.get_data()
+      var result = src.getData()
       var expected = {oid: 1, A:"A", B:"B"}
       expect(result).to.deep.equal(expected)
     })
 
     it('is same ignores id', function(){
       var eo = new EOffer(1, "A", "B")
-      expect(eo.is_same_as_mine(new EOffer(2, "A", "B"))).to.be.true
+      expect(eo.isSameAsMine(new EOffer(2, "A", "B"))).to.be.true
     })
 
     it('is same ignores expired', function(){
       var eo = new EOffer(1, "A", "B")
       var x = new EOffer(1, "A", "B")
       x.refresh(42)
-      expect(eo.is_same_as_mine(x)).to.be.true
+      expect(eo.isSameAsMine(x)).to.be.true
     })
 
     it('is same equality table', function(){
       var eo = new EOffer(1, "A", "B")
-      expect(eo.is_same_as_mine(new EOffer(1, "A", "B"))).to.be.true
-      expect(eo.is_same_as_mine(new EOffer(1, "X", "B"))).to.be.false
-      expect(eo.is_same_as_mine(new EOffer(1, "A", "X"))).to.be.false
-      expect(eo.is_same_as_mine(new EOffer(1, "X", "X"))).to.be.false
+      expect(eo.isSameAsMine(new EOffer(1, "A", "B"))).to.be.true
+      expect(eo.isSameAsMine(new EOffer(1, "X", "B"))).to.be.false
+      expect(eo.isSameAsMine(new EOffer(1, "A", "X"))).to.be.false
+      expect(eo.isSameAsMine(new EOffer(1, "X", "X"))).to.be.false
     })
 
     it('matches', function(){
@@ -136,12 +136,12 @@ describe('P2PTrade ProtocolObjects', function(){
     it('compatibility', function(){
       var meo = new MyEOffer(1, "A", "B")
       var eo = new EOffer(1, "A", "B")
-      expect(meo.is_same_as_mine(eo)).to.be.true
+      expect(meo.isSameAsMine(eo)).to.be.true
     })
 
     it('convert from data', function(){
       var data = {oid: 1, A:"A", B:"B"}
-      var result = MyEOffer.from_data(data)
+      var result = MyEOffer.fromData(data)
       var expected = new MyEOffer(1, "A", "B")
       expect(result).to.deep.equal(expected)
     })
@@ -155,14 +155,14 @@ describe('P2PTrade ProtocolObjects', function(){
 
     it('convert from data', function(){
       var data = {inputs:"i", targets:"t"}
-      var result = new ETxSpec.from_data(data) || olete
+      var result = new ETxSpec.fromData(data) || olete
       var expected = new ETxSpec("i", "t", null)
       expect(result).to.deep.equal(expected)
     })
 
     it('convert to data', function(){
       var src = new ETxSpec("i", "t", null)
-      var result = src.get_data()
+      var result = src.getData()
       var expected = {inputs:"i", targets:"t"}
       expect(result).to.deep.equal(expected)
     })
@@ -177,8 +177,8 @@ describe('P2PTrade ProtocolObjects', function(){
     it('convert to data', function(){
       var eo = new EOffer(1, "A", "B")
       var src = new EProposal("pid", "ewctrl", eo)
-      var result = src.get_data()
-      var expected = {pid:"pid", offer:eo.get_data()}
+      var result = src.getData()
+      var expected = {pid:"pid", offer:eo.getData()}
       expect(result).to.deep.equal(expected)
     })
 
@@ -201,7 +201,7 @@ describe('P2PTrade ProtocolObjects', function(){
       var ewctrl = new MockEWalletController()
       var a = new EOffer(1, "A", "B")
       var b = new EOffer(2, "X", "Y")
-      var etxSpec = { get_data: function() { return "mock_etx_spec" } }
+      var etxSpec = { getData: function() { return "mock_etx_spec" } }
       expect(function(){ 
         new MyEProposal(ewctrl, a, b, etxSpec)
       }).to.throw(Error)
@@ -213,9 +213,9 @@ describe('P2PTrade ProtocolObjects', function(){
       var b = new EOffer(1, "B", "A")
       ewctrl.makeEtxSpec(a.B, a.A, function(error, etxSpec){
         var src = new MyEProposal(ewctrl, a, b, etxSpec)
-        var result = src.get_data()
+        var result = src.getData()
         var expected = {
-            pid:src.pid, offer:a.get_data(), 
+            pid:src.pid, offer:a.getData(), 
             etx_spec: {inputs:"B", targets:"A"}
         }
         expect(result).to.deep.equal(expected)
@@ -228,11 +228,11 @@ describe('P2PTrade ProtocolObjects', function(){
       var ewctrl = new MockEWalletController()
       var a = new EOffer(1, "A", "B")
       var b = new EOffer(1, "B", "A")
-      var etxSpec = { get_data: function() { return "mock_etx_spec" } }
+      var etxSpec = { getData: function() { return "mock_etx_spec" } }
       var src = new MyEProposal(ewctrl, a, b, etxSpec)
       src.etx_data = "etx_data"
-      var result = src.get_data()
-      var expected = {pid:src.pid, offer:a.get_data(), etx_data: "etx_data"}
+      var result = src.getData()
+      var expected = {pid:src.pid, offer:a.getData(), etx_data: "etx_data"}
       expect(result).to.deep.equal(expected)
       expect(result['etx_spec']).to.be.undefined
     })
