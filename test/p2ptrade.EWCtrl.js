@@ -9,12 +9,13 @@ var RawTx = ccCore.tx.RawTx
 var Coin = ccCore.coin.Coin
 var ColorValue = ccCore.cclib.ColorValue;
 var UncoloredColorDefinition = ccCore.cclib.UncoloredColorDefinition
+var Transaction = ccCore.cclib.bitcoin.Transaction
 
-// mainnet, 3 uncolored outputs
-var btcHexTx = require('./fixtures/p2ptrade.EWCtrl.json').tx.mainnet.uncolored3
-var mnemonic = require('./fixtures/p2ptrade.EWCtrl.json').wallet.mnemonic
-var password = require('./fixtures/p2ptrade.EWCtrl.json').wallet.password
-var assetdefs = require('./fixtures/p2ptrade.EWCtrl.json').assetDefinitions
+var fixtures = require('./fixtures/p2ptrade.EWCtrl.json')
+var btcHexTx = fixtures.tx.uncolored2.raw // mainnet, 2 uncolored outputs
+var mnemonic = fixtures.wallet.alice.mnemonic
+var password = fixtures.wallet.alice.password
+var assetdefs = fixtures.assetDefinitions
 var gold = assetdefs[0]
 
 /**
@@ -108,9 +109,7 @@ describe('P2PTrade EWCtrl', function(){
         if (error){
           done(error)
         } else {
-          wallet.subscribeAndSyncAllAddresses(function(error){
-            done(error)
-          })
+          wallet.subscribeAndSyncAllAddresses(done)
         }
       })
 
@@ -127,7 +126,7 @@ describe('P2PTrade EWCtrl', function(){
       var my_offer = null
       var rawTx = RawTx.fromHex(btcHexTx)
       mw_ewctrl.publish_tx(rawTx, my_offer)
-      expect(mockwallet.txSent.length).to.deep.equal(1)
+      expect(mockwallet.txSent.length).to.equal(1)
     })
 
     it.skip('check_tx', function(){
@@ -163,8 +162,10 @@ describe('P2PTrade EWCtrl', function(){
     })
 
     it('makeEtxSpec', function(done){
-      var our = {"color_spec": "", "value": 20000}
-      var their = {"color_spec": gold["colorDescs"][0], "value": 20000}
+      var tradeValue = 100000 // 1mBTC
+      var maxfee = 50000 // 0.5 mBTC
+      var our = {"color_spec": "", "value": tradeValue}
+      var their = {"color_spec": gold["colorDescs"][0], "value": tradeValue}
       ewctrl.makeEtxSpec(our, their, function(error, etxSpec){
         expect(error).to.be.null
         expect(etxSpec).to.be.instanceof(ETxSpec)
@@ -174,17 +175,24 @@ describe('P2PTrade EWCtrl', function(){
       })
     })
 
-    it('makeReplyTx', function(done){
-      // TODO use colors
-      var our = {"color_spec": "", "value": 20000}
-      var their = {"color_spec": "", "value": 20000}
+    it('makeReplyTx uncolored', function(done){
+      var tradeValue = 100000 // 1mBTC
+      var maxfee = 50000 // 0.5 mBTC
+      var our = {"color_spec": "", "value": tradeValue}
+      var their = {"color_spec": "", "value": tradeValue}
       ewctrl.makeEtxSpec(our, their, function(error, etxSpec){
         expect(error).to.be.null
         ewctrl.makeReplyTx(etxSpec, their, our, function(error, signedTx){
           expect(error).to.be.null
-
-          // TODO check inputs, outputs and change
-          done()
+          expect(signedTx).to.be.instanceof(Transaction)
+          var rawTx = RawTx.fromTransaction(signedTx)
+          rawTx.getDeltaColorValues(wallet, seed, function(error, colorValues){
+            expect(colorValues).to.be.an('array').with.to.have.length(1)
+            var colorValue = colorValues[0]
+            expect(colorValue.isUncolored()).to.be.true
+            expect(colorValue.getValue()).to.above(-maxfee)
+            done()
+          })
         })
       })
     })

@@ -42,11 +42,8 @@ OperationalETxSpec.prototype.prepareInputs = function(etx_spec, main_cb){
   self.inputs = {}
 
   async.map(Object.keys(etx_spec.inputs), function(color_spec, spec_cb){
-
-    var inps = etx_spec.inputs[color_spec]
     var colordef = self.ewctrl.resolve_color_spec(color_spec)
-
-    async.map(inps, function(inp, inp_cb){
+    async.map(etx_spec.inputs[color_spec], function(inp, inp_cb){
 
       var txhash = inp[0]
       var outindex = inp[1]
@@ -74,7 +71,6 @@ OperationalETxSpec.prototype.prepareInputs = function(etx_spec, main_cb){
     }, function(error){
       spec_cb(error)
     })
-
   }, function(error){
     main_cb(error)
   })
@@ -113,7 +109,7 @@ OperationalETxSpec.prototype.prepareTargets = function(etxSpec, their){
 }
 
 /*
-OperationalETxSpec.prototype.selectUncoloredCoins = function(
+OperationalETxSpec.prototype.selectUncoloredCoins = function( // FIXME unneeded?
       colorvalue, feeEstimator, cb
     ){
   var uncoloredColorDef = new UncoloredColorDefinition()
@@ -171,7 +167,7 @@ OperationalETxSpec.prototype.selectUncoloredCoins = function(
   }
 }
 
-OperationalETxSpec.prototype.selectCoins = function(colorValue, feeEstimator, cb){
+OperationalETxSpec.prototype.selectCoins = function(colorValue, feeEstimator, cb){ // FIXME unneeded?
   //self._validate_select_coins_parameters(colorValue, feeEstimator)
   var colordef = colorValue.getColorDefinition()
   var color_id = colordef.getColorId()
