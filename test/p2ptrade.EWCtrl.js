@@ -140,18 +140,32 @@ describe('P2PTrade EWCtrl', function(){
       // function is dead code?
     })
 
-    it('selectInputs', function(done){
+    it('selectInputs uncolored', function(done){
       var colordef = new UncoloredColorDefinition()
       var expectedCV = new ColorValue(colordef, 0.001)
       ewctrl.selectInputs(expectedCV, function(error, inputs, change){
         expect(error).to.be.null
         async.map(inputs, function(input, cb){
           expect(input).to.be.instanceof(Coin)
-          cb(null, input) // XXX temp fix
-          // input.getColorValue(colordef, cb) // FIXME get ColorValue from Coin
+          cb(null, input)
+        }, function(error, inputCVs){
+          done()
+        })
+      })
+    })
+
+    it('selectInputs uncolored check values', function(done){
+      var colordef = new UncoloredColorDefinition()
+      var expectedCV = new ColorValue(colordef, 0.001)
+      ewctrl.selectInputs(expectedCV, function(error, inputs, change){
+        expect(error).to.be.null
+        async.map(inputs, function(input, cb){
+          expect(input).to.be.instanceof(Coin)
+          // input coin seem to be correct but cant get ColorValue from it
+          input.getColorValue(colordef, cb)
         }, function(error, inputCVs){
           // expect(error).to.be.null // FIXME is undefined for some reason
-          // expect(ColorValue.sum(inputCVs).minus(change)).to.equal(expectedCV)
+          expect(ColorValue.sum(inputCVs).minus(change)).to.equal(expectedCV)
           done()
         })
       })

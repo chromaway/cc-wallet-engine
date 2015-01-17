@@ -1,5 +1,4 @@
 var expect = require('chai').expect
-var sinon = require('sinon') // use sinon to test ajax, see http://sinonjs.org/
 var Utils = require('../src/p2ptrade').Utils
 var unixTime = Utils.unixTime
 var dictValues = Utils.dictValues
