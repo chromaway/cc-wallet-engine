@@ -70,8 +70,12 @@ describe('CWPPPaymentModel', function () {
     paymentModel.selectCoins(function (error, cinputs, change, colordef) {
       expect(error).to.be.null
       expect(cinputs).to.be.an('array')
-      function cinputsCheck() { cinputs.forEach(cccore.verify.rawCoin) }
-      expect(cinputsCheck).to.not.throw(Error)
+      cinputs.forEach(function (cinput) {
+        cccore.verify.txId(cinput.txId)
+        cccore.verify.number(cinput.outIndex)
+        cccore.verify.number(cinput.value)
+        cccore.verify.hexString(cinput.script)
+      })
       expect(change).to.have.property('address').and.to.be.a('string')
       expect(change).to.have.property('value').and.to.be.a('number')
       expect(colordef).to.be.instanceof(cccore.cclib.ColorDefinition)

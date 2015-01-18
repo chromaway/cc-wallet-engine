@@ -21,7 +21,7 @@ HistoryEntryModel.prototype.getHistoryEntry = function () {
  * @return {string}
  */
 HistoryEntryModel.prototype.getTxId = function () {
-  return this.historyEntry.txId
+  return this.historyEntry.getTxId()
 }
 
 /**
