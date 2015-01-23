@@ -172,7 +172,7 @@ WalletEngine.prototype._initializeWalletEngine = function () {
     self._update()
   }
 
-  var historyUpdateTrigger = false
+  var historyUpdateTrigger = true
   self._wallet.on('historyUpdate', function () { historyUpdateTrigger = true })
   self._wallet.on('syncStop', function () {
     if (historyUpdateTrigger) {
