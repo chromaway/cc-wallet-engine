@@ -1,5 +1,6 @@
 var _ = require('lodash')
 var request = require('request')
+var Q = require('q')
 var verify = require('cc-wallet-core').verify
 
 var errors = require('./errors')
@@ -19,7 +20,7 @@ function PaymentRequestModel(wallet, assetdef, props) {
   verify.Wallet(wallet)
   verify.AssetDefinition(assetdef)
   verify.object(props)
-  // props.amount verified in parseValue
+  // props.amount verified in assetdef.parseValue
   if (!_.isUndefined(props.address)) { verify.string(props.address) }
   if (!_.isUndefined(props.cwpp_host)) { verify.string(props.cwpp_host) }
 
@@ -33,7 +34,7 @@ function PaymentRequestModel(wallet, assetdef, props) {
     props.address = wallet.getSomeAddress(assetdef, false)
   } else {
     // need uncolored address
-    props.address = wallet.getBitcoinAddress(assetdef, props.address)
+    props.address = wallet.getBitcoinAddress(props.address)
   }
 
   if (_.isUndefined(props.cwpp_host)) {
@@ -55,30 +56,30 @@ function PaymentRequestModel(wallet, assetdef, props) {
  * @param {PaymentRequestModel~getPaymentURICallback} cb
  */
 PaymentRequestModel.prototype.getPaymentURI = function (cb) {
+  verify.function(cb)
+
   var self = this
+  if (self.paymentURI === null) {
+    var requestOpts = {
+      method: 'POST',
+      uri: 'http://' + self.props.cwpp_host + '/cwpp/new-request',
+      body: JSON.stringify(self.cwppPayReq),
+      json: true
+    }
 
-  if (self.paymentURI) { return cb(null, self.paymentURI) }
+    self.paymentURI = Q.nfcall(request, requestOpts).spread(function (response, body) {
+      if (response.statusCode !== 200) {
+        throw new errors.RequestError('PaymentRequestModel: ' + response.statusMessage)
+      }
 
-  var requestOpts = {
-    method: 'POST',
-    uri: 'http://' + self.props.cwpp_host + '/cwpp/new-request',
-    body: JSON.stringify(self.cwppPayReq)
+      return cwpp.make_cwpp_uri(self.props.cwpp_host, body.hash)
+    })
   }
 
-  request(requestOpts, function (error, response, body) {
-    if (error) {
-      return cb(error)
-    }
-
-    if (response.statusCode !== 200) {
-      return cb(new errors.RequestError('PaymentRequestModel: ' + response.statusMessage))
-    }
-
-    var result = JSON.parse(body)
-    self.paymentURI = cwpp.make_cwpp_uri(self.props.cwpp_host, result.hash)
-
-    return cb(null, self.paymentURI)
-  })
+  self.paymentURI.done(
+    function (uri) { cb(null, uri) },
+    function (error) { cb(error) }
+  )
 }
 
 module.exports = PaymentRequestModel

@@ -49,7 +49,7 @@ describe('HistoryEntryModel', function () {
   })
 
   it('getDate', function () {
-    var timestamp = historyEntry.historyEntry.getTimestamp() - new Date().getTimezoneOffset() * 60
+    var timestamp = historyEntry.historyEntry.getTimestamp()
     var date = moment(timestamp * 1000).format('MM/DD/YY HH:mm:ss')
     var expectedValue = (historyEntry.historyEntry.isBlockTimestamp() ? '~' : '') + date
     expect(historyEntry.getDate()).to.equal(expectedValue)
