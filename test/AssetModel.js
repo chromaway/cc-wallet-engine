@@ -11,8 +11,7 @@ describe('AssetModel', function () {
     localStorage.clear()
     walletEngine = new WalletEngine({
       testnet: true,
-      blockchain: 'NaiveBlockchain',
-      storageSaveTimeout: 0,
+      blockchain: {name: 'Naive'},
       spendUnconfirmedCoins: true
     })
     walletEngine.getWallet().initialize('12355564466111166655222222222222')

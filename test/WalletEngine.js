@@ -9,7 +9,11 @@ describe('WalletEngine', function () {
 
   beforeEach(function () {
     localStorage.clear()
-    walletEngine = new WalletEngine({testnet: true})
+    walletEngine = new WalletEngine({
+      testnet: true,
+      blockchain: {name: 'Naive'},
+      spendUnconfirmedCoins: true
+    })
     walletEngine.on('error', function (error) { throw error })
   })
 
