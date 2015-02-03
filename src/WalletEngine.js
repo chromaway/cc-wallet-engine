@@ -4,7 +4,6 @@ var util = require('util')
 var BIP39 = require('bip39')
 var ccWallet = require('cc-wallet-core').Wallet
 var CryptoJS = require('crypto-js')
-var _ = require('lodash')
 var store = require('store')
 var cccoreUtil = require('cc-wallet-core').util
 
@@ -37,24 +36,13 @@ var errors = require('./errors')
  * @class WalletEngine
  * @extends external:events.EventEmitter
  * @mixins external:cc-wallet-core.util.SyncMixin
- * @param {Object} [opts]
- * @param {boolean} [opts.testnet=false]
- * @param {string} [opts.network=Electrum] Available: Chain, Electrum
- * @param {string} [opts.blockchain=NaiveBlockchain] Available: NaiveBlockchain, VerifiedBlockchain
- * @param {number} [opts.storageSaveTimeout=1000]
+ * @param {Object} [opts] See opts in cc-wallet-core.Wallet
  */
 function WalletEngine(opts) {
   var self = this
   events.EventEmitter.call(self)
   self.setMaxListeners(100) // 10 by default, 0 -- unlimited
   cccoreUtil.SyncMixin.call(self)
-
-  opts = _.extend({
-    testnet: false,
-    network: 'Electrum',
-    blockchain: 'NaiveBlockchain',
-    storageSaveTimeout: 1000
-  }, opts)
 
   self.setCallback(function () {})
   self._assetModels = null
@@ -67,28 +55,23 @@ function WalletEngine(opts) {
 
   // note: can't depend on network.isConnected because it's updated
   // via events
-  self._networkIsConnected = self._wallet.network.isConnected()
-  self._wallet.network.on('connect', function () {
-    self._networkIsConnected = true
-    self._update()
-  })
-  self._wallet.network.on('disconnect', function () {
-    self._networkIsConnected = false
-    self._update()
-  })
+  self._wallet.getNetwork().on('connect', self._update.bind(self))
+  self._wallet.getNetwork().on('disconnect', self._update.bind(self))
 
   // note: we update right away on syncStart, but use debounce on syncStop
   self.on('syncStart', function () { self._updateCallback() })
   self.on('syncStop', function () { self._delayedUpdateCallback() })
 
-  if (self._wallet.isInitialized()) { self._initializeWalletEngine() }
+  if (self._wallet.isInitialized()) {
+    self._initializeWalletEngine()
+  }
 }
 
 util.inherits(WalletEngine, events.EventEmitter)
 
 
 WalletEngine.prototype.isConnected = function () {
-  return this._networkIsConnected
+  return this._wallet.getNetwork().isConnected()
 }
 
 WalletEngine.prototype.isUpdating = function () {

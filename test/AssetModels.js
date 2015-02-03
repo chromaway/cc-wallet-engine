@@ -15,8 +15,7 @@ describe('AssetModels', function () {
     localStorage.clear()
     wallet = new ccWallet({
       testnet: true,
-      blockchain: 'NaiveBlockchain',
-      storageSaveTimeout: 0,
+      blockchain: {name: 'Naive'},
       spendUnconfirmedCoins: true
     })
     wallet.on('error', function (error) { throw error })
