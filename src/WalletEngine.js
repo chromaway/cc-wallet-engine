@@ -43,12 +43,19 @@ function WalletEngine(opts) {
   events.EventEmitter.call(self)
   self.setMaxListeners(100) // 10 by default, 0 -- unlimited
   cccoreUtil.SyncMixin.call(self)
-
+  self._opts = opts
   self.setCallback(function () {})
+  self._createWallet()
+}
+
+util.inherits(WalletEngine, events.EventEmitter)
+
+WalletEngine.prototype._createWallet = function () {
+  var self = this
   self._assetModels = null
   self._historyEntries = []
 
-  self._wallet = new ccWallet(opts)
+  self._wallet = new ccWallet(self._opts)
   self._wallet.on('error', function (error) { self.emit('error', error) })
   self._wallet.on('syncStart', function () { self._syncEnter() })
   self._wallet.on('syncStop', function () { self._syncExit() })
@@ -66,9 +73,6 @@ function WalletEngine(opts) {
     self._initializeWalletEngine()
   }
 }
-
-util.inherits(WalletEngine, events.EventEmitter)
-
 
 WalletEngine.prototype.isConnected = function () {
   return this._wallet.getNetwork().isConnected()
@@ -392,6 +396,9 @@ WalletEngine.prototype.clearStorage = function () {
   this._wallet.clearStorage()
   store.remove('cc-wallet-engine__mnemonic')
   store.remove('cc-wallet-engine__encryptedpin')
+  this._wallet.removeListeners()
+  if (this.isInitialized()) { this._assetModels.removeListeners() }
+  this._createWallet()  
 }
 
 

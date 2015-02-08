@@ -51,4 +51,19 @@ describe('WalletEngine', function () {
     var password = 'qwerty'
     walletEngine.initialize(mnemonic, password, '1234')
   })
+
+it('re-initialize', function () {
+    var mnemonic = walletEngine.generateMnemonic()
+    var password = 'qwerty'
+
+    walletEngine.initialize(mnemonic, password, '1234')
+
+    walletEngine.clearStorage()
+
+    var newMnemonic = walletEngine.generateMnemonic()
+    var newPassword = 'hello'
+    
+    walletEngine.initialize(newMnemonic, newPassword, '9000')
+    expect(walletEngine.isInitialized()).to.be.true
+  })
 })
