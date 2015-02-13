@@ -398,7 +398,7 @@ WalletEngine.prototype.clearStorage = function () {
   store.remove('cc-wallet-engine__encryptedpin')
   this._wallet.removeListeners()
   if (this.isInitialized()) { this._assetModels.removeListeners() }
-  this._createWallet()  
+  this._createWallet()
 }
 
 

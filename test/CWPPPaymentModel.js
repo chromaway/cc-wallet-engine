@@ -26,6 +26,7 @@ describe('CWPPPaymentModel', function () {
     localStorage.clear()
     walletEngine = new WalletEngine({
       testnet: true,
+      networks: [{name: 'ElectrumJS', args: [{testnet: true}]}],
       blockchain: {name: 'Naive'},
       spendUnconfirmedCoins: true
     })
@@ -55,10 +56,11 @@ describe('CWPPPaymentModel', function () {
   })
 
   afterEach(function () {
-    paymentModel = undefined
+    paymentModel = null
+    walletEngine.getWallet().getNetwork().disconnect()
     walletEngine.removeListeners()
     walletEngine.clearStorage()
-    walletEngine = undefined
+    walletEngine = null
   })
 
   it('addRecipient throw NotImplementedError', function () {

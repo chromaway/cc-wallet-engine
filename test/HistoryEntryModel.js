@@ -14,6 +14,7 @@ describe('HistoryEntryModel', function () {
     localStorage.clear()
     wallet = new WalletEngine({
       testnet: true,
+      networks: [{name: 'ElectrumJS', args: [{testnet: true}]}],
       blockchain: {name: 'Naive'},
       spendUnconfirmedCoins: true
     })
@@ -37,10 +38,11 @@ describe('HistoryEntryModel', function () {
   })
 
   afterEach(function () {
-    historyEntry = undefined
+    historyEntry = null
+    wallet.getWallet().getNetwork().disconnect()
     wallet.removeListeners()
     wallet.clearStorage()
-    wallet = undefined
+    wallet = null
   })
 
   it('getTxId', function () {

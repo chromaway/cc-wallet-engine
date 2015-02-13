@@ -11,6 +11,7 @@ describe('WalletEngine', function () {
     localStorage.clear()
     walletEngine = new WalletEngine({
       testnet: true,
+      networks: [{name: 'ElectrumJS', args: [{testnet: true}]}],
       blockchain: {name: 'Naive'},
       spendUnconfirmedCoins: true
     })
@@ -18,9 +19,10 @@ describe('WalletEngine', function () {
   })
 
   afterEach(function () {
+    walletEngine.getWallet().getNetwork().disconnect()
     walletEngine.removeListeners()
     walletEngine.clearStorage()
-    walletEngine = undefined
+    walletEngine = null
   })
 
   it('generateMnemonic', function () {
@@ -52,7 +54,7 @@ describe('WalletEngine', function () {
     walletEngine.initialize(mnemonic, password, '1234')
   })
 
-it('re-initialize', function () {
+  it('re-initialize', function () {
     var mnemonic = walletEngine.generateMnemonic()
     var password = 'qwerty'
 
@@ -62,7 +64,7 @@ it('re-initialize', function () {
 
     var newMnemonic = walletEngine.generateMnemonic()
     var newPassword = 'hello'
-    
+
     walletEngine.initialize(newMnemonic, newPassword, '9000')
     expect(walletEngine.isInitialized()).to.be.true
   })
