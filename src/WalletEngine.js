@@ -182,6 +182,11 @@ WalletEngine.prototype._initializeWalletEngine = function () {
   self._wallet.subscribeAndSyncAllAddresses(subscribeCallback)
 }
 
+WalletEngine.prototype.forceRefresh = function () {
+  var network = this._wallet.getNetwork();
+  if (network.isConnected()) network.refresh();
+}
+
 /**
  * @return {string}
  */
