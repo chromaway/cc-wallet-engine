@@ -172,11 +172,15 @@ WalletEngine.prototype._initializeWalletEngine = function () {
 
   self._wallet.on('newAddress', function (address) {
     self._syncEnter()
-    self._wallet.subscribeAndSyncAddress(address.getAddress(), subscribeCallback)
+    setTimeout(function () {
+                 self._wallet.subscribeAndSyncAddress(address.getAddress(), subscribeCallback)
+    }, 2000);
   })
 
   self._syncEnter()
-  self._wallet.subscribeAndSyncAllAddresses(subscribeCallback)
+  setTimeout(function ()  {
+      self._wallet.subscribeAndSyncAllAddresses(subscribeCallback)
+  }, 2000);
 }
 
 WalletEngine.prototype.forceRefresh = function () {
@@ -184,12 +188,12 @@ WalletEngine.prototype.forceRefresh = function () {
   if (network.isConnected()) network.refresh();
 }
 
-WalletEngine.prototype.connect() = function () {
+WalletEngine.prototype.connect = function () {
   var network = this._wallet.getNetwork();
   network.connect();
 }
 
-WalletEngine.prototype.disconnect() = function () {
+WalletEngine.prototype.disconnect = function () {
   var network = this._wallet.getNetwork();
   network.disconnect();
 }
