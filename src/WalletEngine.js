@@ -60,10 +60,7 @@ WalletEngine.prototype._createWallet = function () {
   self._wallet.on('syncStart', function () { self._syncEnter() })
   self._wallet.on('syncStop', function () { self._syncExit() })
 
-  // note: can't depend on network.isConnected because it's updated
-  // via events
-  self._wallet.getNetwork().on('connect', self._update.bind(self))
-  self._wallet.getNetwork().on('disconnect', self._update.bind(self))
+  self._wallet.getNetwork().on('newReadyState', self._update.bind(self))
 
   // note: we update right away on syncStart, but use debounce on syncStop
   self.on('syncStart', function () { self._updateCallback() })
@@ -186,6 +183,17 @@ WalletEngine.prototype.forceRefresh = function () {
   var network = this._wallet.getNetwork();
   if (network.isConnected()) network.refresh();
 }
+
+WalletEngine.prototype.connect() = function () {
+  var network = this._wallet.getNetwork();
+  network.connect();
+}
+
+WalletEngine.prototype.disconnect() = function () {
+  var network = this._wallet.getNetwork();
+  network.disconnect();
+}
+
 
 /**
  * @return {string}
