@@ -23,17 +23,13 @@ describe('HistoryEntryModel', function () {
 
     wallet.on('historyUpdate', function () { console.log('historyUpdate') })
 
-    wallet.on('syncStop', function () {
+    wallet.once('syncStop', function () {
       var entries = wallet.getWallet().getHistory()
 
       expect(entries).to.be.instanceof(Array).with.to.have.length(1)
       historyEntry = new HistoryEntryModel(entries[0])
 
       done()
-    })
-
-    wallet.getWallet().subscribeAndSyncAllAddresses(function (error) {
-      expect(error).to.be.null
     })
   })
 

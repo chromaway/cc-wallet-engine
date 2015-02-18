@@ -164,38 +164,23 @@ WalletEngine.prototype._initializeWalletEngine = function () {
       historyUpdateTrigger = false
     }
   })
-
-  function subscribeCallback(error) {
-    self._syncExit()
-    if (error !== null) { self.emit('error', error) }
-  }
-
-  self._wallet.on('newAddress', function (address) {
-    self._syncEnter()
-    setTimeout(function () {
-                 self._wallet.subscribeAndSyncAddress(address.getAddress(), subscribeCallback)
-    }, 2000);
-  })
-
-  self._syncEnter()
-  setTimeout(function ()  {
-      self._wallet.subscribeAndSyncAllAddresses(subscribeCallback)
-  }, 2000);
 }
 
 WalletEngine.prototype.forceRefresh = function () {
-  var network = this._wallet.getNetwork();
-  if (network.isConnected()) network.refresh();
+  var network = this._wallet.getNetwork()
+  if (network.isConnected()) {
+    network.refresh()
+  }
 }
 
 WalletEngine.prototype.connect = function () {
-  var network = this._wallet.getNetwork();
-  network.connect();
+  var network = this._wallet.getNetwork()
+  network.connect()
 }
 
 WalletEngine.prototype.disconnect = function () {
-  var network = this._wallet.getNetwork();
-  network.disconnect();
+  var network = this._wallet.getNetwork()
+  network.disconnect()
 }
 
 
