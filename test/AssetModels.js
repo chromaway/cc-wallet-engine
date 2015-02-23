@@ -15,6 +15,7 @@ describe('AssetModels', function () {
     localStorage.clear()
     wallet = new ccWallet({
       testnet: true,
+      networks: [{name: 'ElectrumJS', args: [{testnet: true}]}],
       blockchain: {name: 'Naive'},
       spendUnconfirmedCoins: true
     })
@@ -25,10 +26,11 @@ describe('AssetModels', function () {
 
   afterEach(function () {
     assetModels.removeListeners()
-    assetModels = undefined
+    assetModels = null
+    wallet.getNetwork().disconnect()
     wallet.removeListeners()
     wallet.clearStorage()
-    wallet = undefined
+    wallet = null
   })
 
   it('instance of AssetModels', function () {

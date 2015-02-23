@@ -14,36 +14,41 @@ describe('PaymentModel', function () {
   var walletEngine
   var paymentModel
 
-  beforeEach(function (done) {
+  before(function (done) {
     localStorage.clear()
     walletEngine = new WalletEngine({
       testnet: true,
+      networks: [{name: 'ElectrumJS', args: [{testnet: true}]}],
       blockchain: {name: 'Naive'},
       spendUnconfirmedCoins: true
     })
+    walletEngine.getWallet().once('syncStop', done)
     walletEngine.getWallet().initialize(seed)
-    walletEngine.getWallet().subscribeAndSyncAllAddresses(function (error) {
-      expect(error).to.be.null
+  })
 
-      var assetdef = walletEngine.getWallet().getAssetDefinitionByMoniker('bitcoin')
-      var assetModel = new AssetModel(walletEngine, assetdef)
-      assetModel.on('error', function (error) { throw error })
+  beforeEach(function (done) {
+    var assetdef = walletEngine.getWallet().getAssetDefinitionByMoniker('bitcoin')
+    var assetModel = new AssetModel(walletEngine, assetdef)
+    assetModel.on('error', function (error) { throw error })
 
-      var cnt = 0
-      assetModel.on('update', function () {
-        if (++cnt === 1) {
-          paymentModel = assetModel.makePayment()
-          done()
-        }
-      })
+    var cnt = 0
+    assetModel.on('update', function () {
+      if (++cnt === 1) {
+        paymentModel = assetModel.makePayment()
+        done()
+      }
     })
   })
 
-  afterEach(function () {
-    paymentModel = undefined
+  after(function () {
+    walletEngine.getWallet().getNetwork().disconnect()
     walletEngine.removeListeners()
-    walletEngine.clearStorage()
-    walletEngine = undefined
+    walletEngine = null
+    localStorage.clear()
+  })
+
+  afterEach(function () {
+    paymentModel = null
   })
 
   it('checkAddress return true', function () {

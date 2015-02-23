@@ -11,6 +11,7 @@ describe('AssetModel', function () {
     localStorage.clear()
     walletEngine = new WalletEngine({
       testnet: true,
+      networks: [{name: 'ElectrumJS', args: [{testnet: true}]}],
       blockchain: {name: 'Naive'},
       spendUnconfirmedCoins: true
     })
@@ -20,9 +21,10 @@ describe('AssetModel', function () {
   })
 
   afterEach(function () {
+    walletEngine.getWallet().getNetwork().disconnect()
     walletEngine.removeListeners()
     walletEngine.clearStorage()
-    walletEngine = undefined
+    walletEngine = null
   })
 
   it('bitcoin AssetModel', function (done) {

@@ -43,20 +43,24 @@ function WalletEngine(opts) {
   events.EventEmitter.call(self)
   self.setMaxListeners(100) // 10 by default, 0 -- unlimited
   cccoreUtil.SyncMixin.call(self)
-
+  self._opts = opts
   self.setCallback(function () {})
+  self._createWallet()
+}
+
+util.inherits(WalletEngine, events.EventEmitter)
+
+WalletEngine.prototype._createWallet = function () {
+  var self = this
   self._assetModels = null
   self._historyEntries = []
 
-  self._wallet = new ccWallet(opts)
+  self._wallet = new ccWallet(self._opts)
   self._wallet.on('error', function (error) { self.emit('error', error) })
   self._wallet.on('syncStart', function () { self._syncEnter() })
   self._wallet.on('syncStop', function () { self._syncExit() })
 
-  // note: can't depend on network.isConnected because it's updated
-  // via events
-  self._wallet.getNetwork().on('connect', self._update.bind(self))
-  self._wallet.getNetwork().on('disconnect', self._update.bind(self))
+  self._wallet.getNetwork().on('newReadyState', self._update.bind(self))
 
   // note: we update right away on syncStart, but use debounce on syncStop
   self.on('syncStart', function () { self._updateCallback() })
@@ -66,9 +70,6 @@ function WalletEngine(opts) {
     self._initializeWalletEngine()
   }
 }
-
-util.inherits(WalletEngine, events.EventEmitter)
-
 
 WalletEngine.prototype.isConnected = function () {
   return this._wallet.getNetwork().isConnected()
@@ -163,20 +164,25 @@ WalletEngine.prototype._initializeWalletEngine = function () {
       historyUpdateTrigger = false
     }
   })
-
-  function subscribeCallback(error) {
-    self._syncExit()
-    if (error !== null) { self.emit('error', error) }
-  }
-
-  self._wallet.on('newAddress', function (address) {
-    self._syncEnter()
-    self._wallet.subscribeAndSyncAddress(address.getAddress(), subscribeCallback)
-  })
-
-  self._syncEnter()
-  self._wallet.subscribeAndSyncAllAddresses(subscribeCallback)
 }
+
+WalletEngine.prototype.forceRefresh = function () {
+  var network = this._wallet.getNetwork()
+  if (network.isConnected()) {
+    network.refresh()
+  }
+}
+
+WalletEngine.prototype.connect = function () {
+  var network = this._wallet.getNetwork()
+  network.connect()
+}
+
+WalletEngine.prototype.disconnect = function () {
+  var network = this._wallet.getNetwork()
+  network.disconnect()
+}
+
 
 /**
  * @return {string}
@@ -392,6 +398,9 @@ WalletEngine.prototype.clearStorage = function () {
   this._wallet.clearStorage()
   store.remove('cc-wallet-engine__mnemonic')
   store.remove('cc-wallet-engine__encryptedpin')
+  this._wallet.removeListeners()
+  if (this.isInitialized()) { this._assetModels.removeListeners() }
+  this._createWallet()
 }
 
 

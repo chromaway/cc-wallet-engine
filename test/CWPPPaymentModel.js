@@ -22,43 +22,50 @@ describe('CWPPPaymentModel', function () {
   var walletEngine
   var paymentModel
 
-  beforeEach(function (done) {
+  before(function (done) {
     localStorage.clear()
     walletEngine = new WalletEngine({
       testnet: true,
+      networks: [{name: 'ElectrumJS', args: [{testnet: true}]}],
       blockchain: {name: 'Naive'},
       spendUnconfirmedCoins: true
     })
-    walletEngine.once('syncStop', function () {
-      var assetModel = walletEngine.getAssetModels().filter(function (am) {
-        return am.getMoniker() === goldAsset.monikers[0]
-      })[0]
-      var paymentOpts = {
-        // cwpp_host: 'localhost:4242',
-        amount: '1',
-        address: 'mr7NzJFwZ978iqmv3GaAWbCpYhaiLWf2JP'
-      }
-      assetModel.makePaymentRequest(paymentOpts).getPaymentURI(function (error, uri) {
-        expect(error).to.be.null
-        expect(cwpp.is_cwpp_uri(uri)).to.be.true
-
-        paymentModel = new CWPPPaymentModel(walletEngine, uri)
-        paymentModel.setSeed(seed)
-        paymentModel.initialize(function (error) {
-          expect(error).to.be.null
-          done()
-        })
-      })
-    })
+    walletEngine.once('syncStop', done)
     walletEngine.initialize(mnemonic, password, '')
     walletEngine.getWallet().addAssetDefinition(seed, goldAsset)
   })
 
-  afterEach(function () {
-    paymentModel = undefined
+  beforeEach(function (done) {
+    var assetModel = walletEngine.getAssetModels().filter(function (am) {
+      return am.getMoniker() === goldAsset.monikers[0]
+    })[0]
+    var paymentOpts = {
+      // cwpp_host: 'localhost:4242',
+      amount: '1',
+      address: 'mr7NzJFwZ978iqmv3GaAWbCpYhaiLWf2JP'
+    }
+    assetModel.makePaymentRequest(paymentOpts).getPaymentURI(function (error, uri) {
+      expect(error).to.be.null
+      expect(cwpp.is_cwpp_uri(uri)).to.be.true
+
+      paymentModel = new CWPPPaymentModel(walletEngine, uri)
+      paymentModel.setSeed(seed)
+      paymentModel.initialize(function (error) {
+        expect(error).to.be.null
+        done()
+      })
+    })
+  })
+
+  after(function () {
+    walletEngine.getWallet().getNetwork().disconnect()
     walletEngine.removeListeners()
-    walletEngine.clearStorage()
-    walletEngine = undefined
+    walletEngine = null
+    localStorage.clear()
+  })
+
+  afterEach(function () {
+    paymentModel = null
   })
 
   it('addRecipient throw NotImplementedError', function () {
