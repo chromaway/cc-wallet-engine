@@ -73,7 +73,11 @@ PaymentModel.prototype.checkAmount = function (amount) {
   var assetdef = this.assetModel.getAssetDefinition()
 
   var amountAvailable = assetdef.parseValue(this.assetModel.getAvailableBalance())
-  var amountNeeded = assetdef.parseValue(amount)
+  var amountNeeded = 0
+  if (amount !== undefined) 
+      amountNeeded = assetdef.parseValue(amount);
+
+  amountNeeded += assetdef.parseValue(this.getTotalAmount())
 
   return amountAvailable >= amountNeeded
 }
