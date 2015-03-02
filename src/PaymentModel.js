@@ -19,6 +19,7 @@ function PaymentModel(assetModel, seed) {
   this.status = null
   this.recipients = []
   this.seed = seed
+  this.txId = null
 }
 
 /**
@@ -138,11 +139,12 @@ PaymentModel.prototype.send = function (cb) {
     return Q.ninvoke(wallet, 'transformTx', tx, 'signed', {seedHex: self.seed})
 
   }).then(function (tx) {
+    self.txId = tx.getId()
     return Q.ninvoke(wallet, 'sendTx', tx)
 
   }).done(function () {
     self.status = 'send'
-    cb(null)
+    cb(null, self.txId)
 
   }, function (error) {
     self.status = 'failed'
