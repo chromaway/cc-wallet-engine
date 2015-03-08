@@ -25,7 +25,7 @@ function CWPPPaymentModel(walletEngine, paymentURI) {
   this.walletEngine = walletEngine
   this.paymentURI = paymentURI
   this.state = 'non-initialized'
-  this.payreq = null
+  this.payreq = null 
 }
 
 inherits(CWPPPaymentModel, PaymentModel)
@@ -266,12 +266,13 @@ CWPPPaymentModel.prototype.send = function (cb) {
   }).then(function (response) {
     // build transaction and send
     var tx = RawTx.fromHex(response.tx_data).toTransaction()
+    self.txId = tx.getId()
     return Q.ninvoke(wallet, 'sendTx', tx)
 
   }).done(
     function () {
       self.status = 'send'
-      cb(null)
+      cb(null, self.txId)
     },
     function (error) {
       self.status = 'failed'
