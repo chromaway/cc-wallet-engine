@@ -114,10 +114,10 @@ EAgent.prototype.matchOffers = function(){
     return false
   }
   var success = false
-  dictValues(self.myOffers).forEach(function (my_offer) {
+  dictValues(self.myOffers).forEach(function (myOffer) {
     dictValues(self.theirOffers).forEach(function(their_offer){
-      if(!success && my_offer.matches(their_offer)){
-        self.makeExchangeProposal(their_offer, my_offer, function(error, ep){
+      if(!success && myOffer.matches(their_offer)){
+        self.makeExchangeProposal(their_offer, myOffer, function(error, ep){
           // FIXME handle error
         })
         success = true
@@ -127,16 +127,16 @@ EAgent.prototype.matchOffers = function(){
   return success
 }
 
-EAgent.prototype.makeExchangeProposal = function(orig_offer, my_offer, cb){
+EAgent.prototype.makeExchangeProposal = function(theirOffer, myOffer, cb){
   var self = this
   if(self.hasActiveEP()){
-    return cb("Already have active exchange proposal!")
+    return cb(new Error("Already have active exchange proposal!"))
   }
-  var our = orig_offer.B
-  var their = orig_offer.A
+  var our = theirOffer.B
+  var their = theirOffer.A
   self.ewctrl.makeEtxSpec(our, their, function(error, etxSpec){
     if(error){ return cb(error) }
-    var ep = new MyEProposal(self.ewctrl, orig_offer, my_offer, etxSpec)
+    var ep = new MyEProposal(self.ewctrl, theirOffer, myOffer, etxSpec)
     self.setActiveEP(ep)
     self.postMessage(ep)
     self.fireEvent('make_ep', ep)
@@ -165,7 +165,16 @@ EAgent.prototype.dispatchExchangeProposal = function(ep_data, cb){
 }
 
 EAgent.prototype.isValidInitialForeignEP = function(ep, my_offer){
-  // FIXME implement
+  if(!ep.offer.isSameAsMine(my_offer)){
+    return false // does not match original offer
+  }
+  if(!ep.etx_spec){
+    return false // need etx_spec
+  }
+  
+  // TODO check if ep inputs satisfy offer
+  
+
   return true
 }
 
@@ -179,7 +188,8 @@ EAgent.prototype.acceptExchangeProposal = function(ep, cb){
   var my_offer = self.myOffers[ep.offer.oid]
   if(!self.isValidInitialForeignEP(ep, my_offer)){
     // FIXME handle invalid foreign ep
-    cb("invalid initial foreign exchange proposal")
+    // invalid ep should be viewed as likely malicious and everything removed
+    return cb(new Error("Invalid initial foreign exchange proposal!"))
   }
   ep.accept(my_offer, function(error, replyEP){
     if(error){ return cb(error) }

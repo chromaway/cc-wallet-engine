@@ -55,7 +55,8 @@ MockComm.prototype.postMessage = function(message){
  * Mock ExchangeProposal
  */
 function MockExchangeProposal(){
-  this.offer = { oid: "testoid" }
+  this.offer = mockMyEOffer()
+  this.etx_spec = "mock_etx_spec"
   this.reply_ep = {
     getData: function(){
       return "mock_ep_data"

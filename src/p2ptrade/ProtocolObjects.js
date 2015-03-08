@@ -182,13 +182,6 @@ util.inherits(ForeignEProposal, EProposal)
 
 ForeignEProposal.prototype.accept = function(my_offer, cb){
   var self = this
-  if(!self.offer.isSameAsMine(my_offer)){
-    throw new Error("incompatible offer")
-  }
-  if(!self.etx_spec){
-    throw new Error("need etx_spec")
-  }
-  
   var etxSpec = self.etx_spec
   var our = my_offer.A
   var their = my_offer.B

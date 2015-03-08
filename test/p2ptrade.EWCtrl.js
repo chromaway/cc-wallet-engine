@@ -95,13 +95,12 @@ describe('P2PTrade EWCtrl', function(){
       seed = BIP39.mnemonicToSeedHex(mnemonic, password)
       wallet = new ccWallet({
         testnet: true,
-        blockchain: 'NaiveBlockchain',
         storageSaveTimeout: 0,
         spendUnconfirmedCoins: true,
         systemAssetDefinitions: assetdefs
       })
       wallet.initialize(seed)
-      wallet.network.on('connect', function(error){
+      wallet.getNetwork().on('connect', function(error){
         if (error){
           done(error)
         } else {
@@ -144,6 +143,7 @@ describe('P2PTrade EWCtrl', function(){
       var colordef = new UncoloredColorDefinition()
       var expectedCV = new ColorValue(colordef, 0.001)
       ewctrl.selectInputs(expectedCV, function(error, inputs, change){
+        if (error){ throw error }
         expect(error).to.be.null
         async.map(inputs, function(input, cb){
           expect(input).to.be.instanceof(Coin)
@@ -158,13 +158,14 @@ describe('P2PTrade EWCtrl', function(){
       var colordef = new UncoloredColorDefinition()
       var expectedCV = new ColorValue(colordef, 0.001)
       ewctrl.selectInputs(expectedCV, function(error, inputs, change){
+        if (error){ throw error }
         expect(error).to.be.null
         async.map(inputs, function(input, cb){
           expect(input).to.be.instanceof(Coin)
           // input coin seem to be correct but cant get ColorValue from it
           input.getColorValue(colordef, cb)
         }, function(error, inputCVs){
-          // expect(error).to.be.null // FIXME is undefined for some reason
+          expect(error).to.be.null
           expect(ColorValue.sum(inputCVs).minus(change)).to.equal(expectedCV)
           done()
         })
