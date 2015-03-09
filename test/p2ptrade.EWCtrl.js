@@ -86,11 +86,11 @@ describe('P2PTrade EWCtrl', function(){
 
     beforeEach(function(done) {
 
-      // mock wallet
+      // mock wallet/ewctrl
       mockwallet = new MockWallet()
       mw_ewctrl = new EWalletController(mockwallet, "mock_seed_hex")
 
-      // testnet wallet
+      // testnet wallet/ewctrl
       localStorage.clear()
       seed = BIP39.mnemonicToSeedHex(mnemonic, password)
       wallet = new ccWallet({
@@ -100,14 +100,7 @@ describe('P2PTrade EWCtrl', function(){
         systemAssetDefinitions: assetdefs
       })
       wallet.initialize(seed)
-      wallet.getNetwork().on('connect', function(error){
-        if (error){
-          done(error)
-        } else {
-          wallet.subscribeAndSyncAllAddresses(done)
-        }
-      })
-
+      wallet.once('syncStop', done)
       ewctrl = new EWalletController(wallet, seed)
     })
 
@@ -165,6 +158,7 @@ describe('P2PTrade EWCtrl', function(){
           // input coin seem to be correct but cant get ColorValue from it
           input.getColorValue(colordef, cb)
         }, function(error, inputCVs){
+          if (error){ throw error }
           expect(error).to.be.null
           expect(ColorValue.sum(inputCVs).minus(change)).to.equal(expectedCV)
           done()
@@ -197,7 +191,7 @@ describe('P2PTrade EWCtrl', function(){
           expect(error).to.be.null
           expect(signedTx).to.be.instanceof(Transaction)
           var rawTx = RawTx.fromTransaction(signedTx)
-          rawTx.getDeltaColorValues(wallet, seed, function(error, colorValues){
+          rawTx.getDeltaColorValues(wallet, function(error, colorValues){
             expect(colorValues).to.be.an('array').with.to.have.length(1)
             var colorValue = colorValues[0]
             expect(colorValue.isUncolored()).to.be.true
