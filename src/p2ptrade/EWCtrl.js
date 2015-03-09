@@ -36,7 +36,7 @@ OperationalETxSpec.prototype.prepareInputs = function(etx_spec, main_cb){
 
   async.map(Object.keys(etx_spec.inputs), function(colorDesc, spec_cb){
     var colordef = self.ewctrl.resolveColorDesc(colorDesc)
-    async.map(etx_spec.inputs[color_spec], function(inp, inp_cb){
+    async.map(etx_spec.inputs[colorDesc], function(inp, inp_cb){
 
       var txhash = inp[0]
       var outindex = inp[1]
@@ -111,15 +111,7 @@ function EWalletController(wallet, seedHex){
 
 EWalletController.prototype.publishTX = function(raw_tx, my_offer){
 
-  // add to history
-  // TODO history trade entry not implemented ?
-  // this.wallet.historyManager
-
-  // txhash = raw_tx.get_hex_txhash()
-  // self.model.tx_history.add_trade_entry(
-  //     txhash,
-  //     self.offerSideToColorValue(my_offer.B),
-  //     self.offerSideToColorValue(my_offer.A))
+  // TODO add to history?
 
   // publish transaction
   var published = true
@@ -221,11 +213,6 @@ EWalletController.prototype.checkTx = function(raw_tx, src_etx_spec){
 
 EWalletController.prototype.resolveColorDesc = function(colorDesc){
   return this.wallet.cdManager.resolveByDesc(colorDesc, true);
-}
-
-EWalletController.prototype.offerSideToColorValue = function(side){
-  var colordef = this.resolveColorDesc(side['color_spec'])
-  return new ColorValue(colordef, side['value'])
 }
 
 EWalletController.prototype.selectInputs = function(colorvalue, cb){

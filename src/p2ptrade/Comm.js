@@ -79,9 +79,9 @@ ThreadedComm.prototype.asyncPost = function(message){
   var msgid = makeRandomId()
   message['msgid'] = msgid
   this.ownMsgIDs.add(msgid)
-  this.msgio.post(this.url, message, function(error){
+  this.msgio.post(this.url, message, function(error){ // fire and forget
     if (error){
-      throw error // TODO how to best handle io errors?
+      throw error
     }
   })
 }

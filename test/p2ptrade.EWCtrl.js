@@ -127,11 +127,6 @@ describe('P2PTrade EWCtrl', function(){
       expect(desc.getDesc()).to.deep.equal(gold['colorDescs'][0])
     })
 
-    it.skip('offerSideToColorValue', function(){
-      // TODO test it
-      // function is dead code?
-    })
-
     it('selectInputs uncolored', function(done){
       var colordef = new UncoloredColorDefinition()
       var expectedCV = new ColorValue(colordef, 0.001)
@@ -175,7 +170,7 @@ describe('P2PTrade EWCtrl', function(){
         expect(error).to.be.null
         expect(etxSpec).to.be.instanceof(ETxSpec)
 
-        // TODO check inputs/change color and values
+        // FIXME check inputs/change color and values
         done()
       })
     })

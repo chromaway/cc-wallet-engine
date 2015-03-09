@@ -144,13 +144,7 @@ describe('P2PTrade Agent', function(){
     expect(agent.hasActiveEP()).to.be.false
   })
 
-  it('service_my_offers ignores non auto_post', function(){
-    agent.registerMyOffer(mockMyEOffer())
-    agent.serviceMyOffers()
-    expect(comm.messages.length == 0).to.be.true
-  })
-
-  it('service_my_offers ignores activeEP.my_offer', function(){
+  it('serviceMyOffers ignores activeEP.my_offer', function(){
     var my_offer = EOffer.fromData({
       "oid": "test_my_offer",
       "A": { "color_spec": "", "value": 100000000 },
@@ -162,7 +156,7 @@ describe('P2PTrade Agent', function(){
     expect(comm.messages.length == 0).to.be.true
   })
 
-  it('service_my_offers', function(){
+  it('serviceMyOffers', function(){
     var my_offer = EOffer.fromData({
       "oid": "test_my_offer",
       "A": { "color_spec": "", "value": 100000000 },
