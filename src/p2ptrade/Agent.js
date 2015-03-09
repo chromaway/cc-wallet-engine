@@ -118,7 +118,7 @@ EAgent.prototype.matchOffers = function(){
     dictValues(self.theirOffers).forEach(function(their_offer){
       if(!success && myOffer.matches(their_offer)){
         self.makeExchangeProposal(their_offer, myOffer, function(error, ep){
-          // FIXME handle error
+          if (error){ throw error }
         })
         success = true
       }
@@ -172,7 +172,7 @@ EAgent.prototype.isValidInitialForeignEP = function(ep, my_offer){
     return false // need etx_spec
   }
   
-  // TODO check if ep inputs satisfy offer
+  // FIXME check if ep inputs satisfy offer
   
 
   return true
@@ -187,8 +187,7 @@ EAgent.prototype.acceptExchangeProposal = function(ep, cb){
   var self = this
   var my_offer = self.myOffers[ep.offer.oid]
   if(!self.isValidInitialForeignEP(ep, my_offer)){
-    // FIXME handle invalid foreign ep
-    // invalid ep should be viewed as likely malicious and everything removed
+    // invalid ep should be viewed as likely malicious and everything aborted
     return cb(new Error("Invalid initial foreign exchange proposal!"))
   }
   ep.accept(my_offer, function(error, replyEP){
@@ -201,7 +200,6 @@ EAgent.prototype.acceptExchangeProposal = function(ep, cb){
 }
 
 EAgent.prototype.clearOrders = function(ep){
-  this.fireEvent('trade_complete', ep)
   if(ep instanceof MyEProposal){
     if(ep.my_offer){
       delete this.myOffers[ep.my_offer.oid]
@@ -216,13 +214,16 @@ EAgent.prototype.clearOrders = function(ep){
 EAgent.prototype.finishExchangeProposal = function(ep, cb){
   var my_ep = this.activeEP
   if(!this.isValidForeignEPReply(ep, my_ep)){
-    // FIXME handle invalid ep reply
-    cb("Invalid foreign exchange proposal!")
+    // invalid ep should be viewed as likely malicious and everything aborted
+    this.clearOrders(my_ep)
+    this.setActiveEP(null)
+    return cb(new Error("Invalid foreign exchange proposal!"))
   }
   my_ep.processReply(ep)
   if(my_ep instanceof MyEProposal){
     this.postMessage(my_ep)
   }
+  this.fireEvent('trade_complete', ep)
   this.clearOrders(my_ep)
   this.setActiveEP(null)
   cb(null)

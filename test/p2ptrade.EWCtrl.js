@@ -121,8 +121,8 @@ describe('P2PTrade EWCtrl', function(){
       // TODO test it
     })
 
-    it('resolveColorSpec', function(){
-      var desc = ewctrl.resolveColorSpec(gold['colorDescs'][0])
+    it('resolveColorDesc', function(){
+      var desc = ewctrl.resolveColorDesc(gold['colorDescs'][0])
       expect(desc.getColorId() > 0).to.be.true
       expect(desc.getDesc()).to.deep.equal(gold['colorDescs'][0])
     })
