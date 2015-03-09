@@ -2,7 +2,6 @@ var expect = require('chai').expect
 var EAgent = require('../src/p2ptrade').Agent.EAgent
 var MyEProposal = require('../src/p2ptrade').ProtocolObjects.MyEProposal
 var EOffer = require('../src/p2ptrade').ProtocolObjects.EOffer
-var MyEOffer = require('../src/p2ptrade').ProtocolObjects.MyEOffer
 var dictLength = require('../src/p2ptrade').Utils.dictLength
 
 function mockMyEOffer(){
@@ -152,7 +151,7 @@ describe('P2PTrade Agent', function(){
   })
 
   it('service_my_offers ignores activeEP.my_offer', function(){
-    var my_offer = MyEOffer.fromData({
+    var my_offer = EOffer.fromData({
       "oid": "test_my_offer",
       "A": { "color_spec": "", "value": 100000000 },
       "B": { "color_spec": "mock_color_spec", "value": 100000000 }
@@ -164,7 +163,7 @@ describe('P2PTrade Agent', function(){
   })
 
   it('service_my_offers', function(){
-    var my_offer = MyEOffer.fromData({
+    var my_offer = EOffer.fromData({
       "oid": "test_my_offer",
       "A": { "color_spec": "", "value": 100000000 },
       "B": { "color_spec": "mock_color_spec", "value": 100000000 }

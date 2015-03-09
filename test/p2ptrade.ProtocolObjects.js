@@ -1,7 +1,6 @@
 var expect = require('chai').expect
 
 var EOffer = require('../src/p2ptrade').ProtocolObjects.EOffer
-var MyEOffer = require('../src/p2ptrade').ProtocolObjects.MyEOffer
 var ETxSpec = require('../src/p2ptrade').ProtocolObjects.ETxSpec
 var EProposal = require('../src/p2ptrade').ProtocolObjects.EProposal
 var MyEProposal = require('../src/p2ptrade').ProtocolObjects.MyEProposal
@@ -119,31 +118,6 @@ describe('P2PTrade ProtocolObjects', function(){
       expect(eo.matches(new EOffer(1, "B", "X"))).to.be.false
       expect(eo.matches(new EOffer(1, "X", "A"))).to.be.false
       expect(eo.matches(new EOffer(1, "X", "X"))).to.be.false
-    })
-
-  })
-
-  /**
-   * Test MyEOffer
-   */
-  describe('MyEOffer', function(){
-
-    it('auto post default', function(){
-      var meo = new MyEOffer(1, "A", "B")
-      expect(meo.auto_post).to.be.true
-    })
-
-    it('compatibility', function(){
-      var meo = new MyEOffer(1, "A", "B")
-      var eo = new EOffer(1, "A", "B")
-      expect(meo.isSameAsMine(eo)).to.be.true
-    })
-
-    it('convert from data', function(){
-      var data = {oid: 1, A:"A", B:"B"}
-      var result = MyEOffer.fromData(data)
-      var expected = new MyEOffer(1, "A", "B")
-      expect(result).to.deep.equal(expected)
     })
 
   })

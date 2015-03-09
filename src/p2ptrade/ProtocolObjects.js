@@ -51,22 +51,6 @@ EOffer.fromData = function(data){
 
 
 /**
- * @class MyEOffer
- * TODO not needed as agent stores my_offers and their_offers seperatly
- */
-function MyEOffer(){
-  EOffer.apply(this, Array.prototype.slice.call(arguments))
-  this.auto_post = true
-}
-
-util.inherits(MyEOffer, EOffer)
-
-MyEOffer.fromData = function(data){
-  return new MyEOffer(data['oid'], data['A'], data['B'])
-}
-
-
-/**
  * @class ETxSpec
  */
 function ETxSpec(inputs, targets, my_utxo_list){
@@ -189,7 +173,6 @@ ForeignEProposal.prototype.accept = function(my_offer, cb){
 
 module.exports = {
   EOffer: EOffer,
-  MyEOffer: MyEOffer,
   ETxSpec: ETxSpec,
   EProposal: EProposal,
   MyEProposal: MyEProposal,

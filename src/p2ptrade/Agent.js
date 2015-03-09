@@ -55,16 +55,14 @@ EAgent.prototype.serviceMyOffers = function(){
   var self = this
   var my_offers_values = []
   dictValues(self.myOffers).forEach(function (my_offer){
-    if(my_offer.auto_post){
-      if(!my_offer.expired()){
-        return
-      }
-      if(self.activeEP && self.activeEP.my_offer.oid == my_offer.oid){
-        return
-      }
-      my_offer.refresh(self.config['offer_expiry_interval'])
-      self.postMessage(my_offer)
+    if(!my_offer.expired()){
+      return
     }
+    if(self.activeEP && self.activeEP.my_offer.oid == my_offer.oid){
+      return
+    }
+    my_offer.refresh(self.config['offer_expiry_interval'])
+    self.postMessage(my_offer)
   })
 }
 
