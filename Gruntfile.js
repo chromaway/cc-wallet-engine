@@ -106,5 +106,6 @@ module.exports = function (grunt) {
   grunt.registerTask('compile_test', ['browserify:test'])
   grunt.registerTask('coverage', ['mocha_istanbul:coverage'])
   grunt.registerTask('coveralls', ['mocha_istanbul:coveralls'])
+  grunt.registerTask('lint', ['jshint', 'jscs'])
   grunt.registerTask('test', ['mochaTest'])
 }

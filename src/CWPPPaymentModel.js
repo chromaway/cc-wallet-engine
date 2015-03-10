@@ -25,7 +25,7 @@ function CWPPPaymentModel(walletEngine, paymentURI) {
   this.walletEngine = walletEngine
   this.paymentURI = paymentURI
   this.state = 'non-initialized'
-  this.payreq = null 
+  this.payreq = null
 }
 
 inherits(CWPPPaymentModel, PaymentModel)

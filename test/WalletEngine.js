@@ -1,4 +1,5 @@
 var expect = require('chai').expect
+var Q = require('q')
 
 var AssetModel = require('../src/AssetModel')
 var WalletEngine = require('../src/WalletEngine')
@@ -41,12 +42,20 @@ describe('WalletEngine', function () {
   })
 
   it('getAssetModels', function (done) {
+    var deferred = Q.defer()
+    deferred.promise.done(done, done)
+
     walletEngine.setCallback(function () {
+      if (deferred.promise.isFulfilled()) {
+        return
+      }
+
       walletEngine.getAssetModels().forEach(function (assetModel) {
         expect(assetModel).to.be.instanceof(AssetModel)
       })
       walletEngine.setCallback(function () {})
-      done()
+
+      deferred.resolve()
     })
 
     var mnemonic = walletEngine.generateMnemonic()
