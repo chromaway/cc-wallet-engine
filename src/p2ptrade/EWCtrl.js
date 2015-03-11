@@ -107,21 +107,19 @@ OperationalETxSpec.prototype.prepareTargets = function(etxSpec, their){
 function EWalletController(wallet, seedHex){
   this.wallet = wallet
   this.seedHex = seedHex
+  this.neverSendOnPublishTx = false
+  this.publishedTxLog = []
 }
 
-EWalletController.prototype.publishTX = function(raw_tx, my_offer){
-
-  // TODO add to history?
-
-  // publish transaction
-  var published = true
+EWalletController.prototype.publishTX = function(raw_tx){
+  this.publishedTxLog.push(raw_tx)
+  if(this.neverSendOnPublishTx){
+    return
+  }
   var tx = raw_tx.toTransaction(false)
-  this.wallet.sendTx(tx, function(err){
-    if (err){
-      published = false
-    }
+  this.wallet.sendTx(tx, function(error){
+    if (error){ throw error }
   })
-  return published
 }
 
 

@@ -117,7 +117,7 @@ MyEProposal.prototype.processReply = function(reply_ep){
       }
     }
     rtxs.sign(wallet, seedHex, cb)
-    this.ewctrl.publishTX(rtxs, this.my_offer) 
+    this.ewctrl.publishTX(rtxs) 
     this.etx_data = rtxs.toHex(false)
   } else {
     throw new Error("p2ptrade reply tx check failed")
