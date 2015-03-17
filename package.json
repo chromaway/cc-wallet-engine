@@ -21,7 +21,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/chromaway/cc-wallet-engine"
+    "url": "git://github.com/chromaway/cc-wallet-engine.git"
   },
   "dependencies": {
     "bip39": "2.1.0",
