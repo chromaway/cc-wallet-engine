@@ -1,8 +1,12 @@
 {
-  "browser": {
-    "request": "browser-request"
-  }, 
   "name": "cc-wallet-engine", 
+  "repository": {
+    "url": "git://github.com/chromaway/cc-wallet-engine.git", 
+    "type": "git"
+  }, 
+  "author": "Fomichev Kirill <fanatid@ya.ru>", 
+  "description": "", 
+  "version": "0.5.4", 
   "contributors": [
     {
       "name": "Henrik Hjelte", 
@@ -17,30 +21,9 @@
       "email": "fabian.barkhau@gmail.com"
     }
   ], 
-  "author": "Fomichev Kirill <fanatid@ya.ru>", 
-  "repository": {
-    "url": "git://github.com/chromaway/cc-wallet-engine.git", 
-    "type": "git"
-  }, 
-  "version": "0.5.3", 
-  "dependencies": {
-    "crypto-js": "3.1.2-5", 
-    "set": "1.1.1", 
-    "lodash": "2.4.1", 
-    "errno": "0.1.1", 
-    "deep-equal": "1.0.0", 
-    "request": "2.48.0", 
-    "moment": "2.8.3", 
-    "browser-request": "0.3.2", 
-    "bip39": "2.1.0", 
-    "cc-wallet-core": "git://github.com/chromaway/cc-wallet-core.git#v0.6.3", 
-    "q": "1.1.1", 
-    "store": "1.3.16"
-  }, 
-  "keywords": [], 
   "devDependencies": {
     "jshint-stylish": "1.0.0", 
-    "grunt-contrib-watch": "0.6.1", 
+    "grunt": "0.4.5", 
     "coveralls": "2.11.2", 
     "grunt-browserify": "3.2.0", 
     "istanbul": "0.3.2", 
@@ -53,8 +36,25 @@
     "validator": "3.32.0", 
     "grunt-contrib-clean": "0.6.0", 
     "grunt-mocha-istanbul": "2.2.0", 
-    "grunt": "0.4.5"
+    "grunt-contrib-watch": "0.6.1"
+  }, 
+  "keywords": [], 
+  "dependencies": {
+    "bip39": "2.1.0", 
+    "set": "1.1.1", 
+    "lodash": "2.4.1", 
+    "errno": "0.1.1", 
+    "deep-equal": "1.0.0", 
+    "request": "2.48.0", 
+    "cc-wallet-core": "git://github.com/chromaway/cc-wallet-core.git#v0.6.4", 
+    "browser-request": "0.3.2", 
+    "crypto-js": "3.1.2-5", 
+    "moment": "2.8.3", 
+    "q": "1.1.1", 
+    "store": "1.3.16"
   }, 
   "main": "./src/index.js", 
-  "description": ""
+  "browser": {
+    "request": "browser-request"
+  }
 }
