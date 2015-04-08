@@ -33,7 +33,6 @@ OperationalETxSpec.prototype.setOurValueLimit = function(our){
 OperationalETxSpec.prototype.prepareInputs = function(etx_spec, main_cb){
   var self = this
   self.inputs = {}
-
   async.map(Object.keys(etx_spec.inputs), function(colorDesc, spec_cb){
     var colordef = self.ewctrl.resolveColorDesc(colorDesc)
     async.map(etx_spec.inputs[colorDesc], function(inp, inp_cb){
@@ -279,7 +278,7 @@ EWalletController.prototype.makeEtxSpec = function(our, their, cb){
     // our change
     if(change.getValue() > 0){
       var address = self.getNewAddress(ourColorDef)
-      targets.push([address, our_color_spec, change.get_value()])
+      targets.push([address, our_color_spec, change.getValue()])
     }
 
     cb(null, new ETxSpec(inputs, targets, coins))
@@ -297,6 +296,7 @@ EWalletController.prototype.makeReplyTx = function(etxSpec, our, their, cb){
   opTxSpec.prepareInputs(etxSpec, function(error){ // adds their inputs to opTxSpec
     if(error){ return cb(error) }
     opTxSpec.prepareTargets(etxSpec, their)
+    // FIXME what about OBColorDefinition ???
     EPOBCColorDefinition.makeComposedTx(opTxSpec, function (error, ctx) {
       if(error){ return cb(error) }
       self.wallet.transformTx(ctx, 'signed', self.seedHex, cb)

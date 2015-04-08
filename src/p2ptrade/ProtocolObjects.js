@@ -4,6 +4,7 @@ var equal = require('deep-equal');
 var WalletCore = require('cc-wallet-core');
 var RawTx = WalletCore.tx.RawTx;
 var unixTime = require('./Utils').unixTime
+var ColorValue = WalletCore.cclib.ColorValue
 
 
 /**
@@ -140,6 +141,16 @@ MyReplyEProposal.prototype.getData = function(){
   var data = EProposal.prototype.getData.apply(this)
   data['etx_data'] = this.tx.toHex()
   return data
+}
+
+MyReplyEProposal.prototype.validate = function(cb){
+  var acd = this.ewctrl.resolveColorDesc(this.my_offer.A['color_spec'])
+  var bcd = this.ewctrl.resolveColorDesc(this.my_offer.B['color_spec'])
+  var acv = new ColorValue(acd, this.my_offer.A['value'])
+  var bcv = new ColorValue(bcd, this.my_offer.B['value'])
+  var rawTx = RawTx.fromComposedTx(this.tx)
+  var maxfee = 50000 // 0.5mBTC FIXME load from cfg or determan based on network
+  rawTx.satisfiesDeltas(this.ewctrl.wallet, [ acv.neg(), bcv ], maxfee, cb)
 }
 
 /**

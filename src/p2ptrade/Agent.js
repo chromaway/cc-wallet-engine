@@ -162,38 +162,32 @@ EAgent.prototype.dispatchExchangeProposal = function(ep_data, cb){
   cb(null)
 }
 
-EAgent.prototype.isValidInitialForeignEP = function(ep, my_offer){
-  if(!ep.offer.isSameAsMine(my_offer)){
-    return false // does not match original offer
-  }
-  if(!ep.etx_spec){
-    return false // need etx_spec
-  }
-  
-  // FIXME check if ep inputs satisfy offer
-  
-
-  return true
-}
-
 EAgent.prototype.isValidForeignEPReply = function(foreign_ep, my_ep){
   // FIXME implement
+
+  
   return true
 }
 
 EAgent.prototype.acceptExchangeProposal = function(ep, cb){
   var self = this
   var my_offer = self.myOffers[ep.offer.oid]
-  if(!self.isValidInitialForeignEP(ep, my_offer)){
+
+  // input validation
+  if(!ep.offer.isSameAsMine(my_offer) || !ep.etx_spec){
     // invalid ep should be viewed as likely malicious and everything aborted
     return cb(new Error("Invalid initial foreign exchange proposal!"))
   }
+
   ep.accept(my_offer, function(error, replyEP){
     if(error){ return cb(error) }
-    self.setActiveEP(replyEP)
-    self.postMessage(replyEP)
-    self.fireEvent('accept_ep', [ep, replyEP])
-    cb(null)
+    replyEP.validate(function(error){
+      if(error){ return cb(error) }
+      self.setActiveEP(replyEP)
+      self.postMessage(replyEP)
+      self.fireEvent('accept_ep', [ep, replyEP])
+      cb(null)
+    })
   })
 }
 

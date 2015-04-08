@@ -9,8 +9,8 @@ var ThreadedComm = require('../src/p2ptrade').Comm.ThreadedComm
 
 // fixtures
 var fixtures = require('./fixtures/p2ptrade.protocol.json')
-var alice = fixtures.wallet.alice
-var bob = fixtures.wallet.bob
+var alice = fixtures.wallet.alice // 123000 gold
+var bob = fixtures.wallet.bob // 3300000 btc
 var assetdefs = fixtures.assetDefinitions
 
 // settings

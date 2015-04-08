@@ -102,6 +102,7 @@ describe('P2PTrade EWCtrl', function(){
       wallet.initialize(seed)
       wallet.once('syncStop', done)
       ewctrl = new EWalletController(wallet, seed)
+      ewctrl.neverSendOnPublishTx = true
     })
 
     afterEach(function () {
