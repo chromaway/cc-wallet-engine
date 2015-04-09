@@ -4,6 +4,7 @@ var dictValues = require('./Utils').dictValues
 var unixTime = require('./Utils').unixTime
 var MyEProposal = require('./ProtocolObjects').MyEProposal
 var ForeignEProposal = require('./ProtocolObjects').ForeignEProposal
+var EOffer = require('./ProtocolObjects').EOffer
 
 /**
  * Implements high-level exchange logic

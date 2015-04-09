@@ -12,33 +12,42 @@ var fixtures = require('./fixtures/p2ptrade.protocol.json')
 var alice = fixtures.wallet.alice // 123000 gold
 var bob = fixtures.wallet.bob // 3300000 btc
 var assetdefs = fixtures.assetDefinitions
+var color_spec = assetdefs[0]["colorDescs"][0] // gold
 
 // settings
-var agentConfig = { 
-  ep_expiry_interval: 42, 
+var agentConfig = {
+  ep_expiry_interval: 42,
   offer_expiry_interval: 42,
   offer_grace_interval: 0
 }
 var commConfig = { offer_expiry_interval : 1 }
 var commUrl = "http://p2ptrade.btx.udoidio.info/messages"
 
-function HackConfigStorage(){
+function MockStore(){
+  this.name = "MockStore"
   this.dict = {}
 }
 
-HackConfigStorage.prototype.get = function (key, defaultValue) {
+MockStore.prototype.get = function (key, defaultValue) {
   return key in this.dict ? this.dict[key] : defaultValue
 }
 
-HackConfigStorage.prototype.set = function (key, value) {
+MockStore.prototype.set = function (key, value) {
   this.dict[key] = value
 }
 
-HackConfigStorage.prototype.clear = function () {
-  this.dict = {}
+MockStore.prototype.remove = function(key){
+  this.dict[key] = undefined
 }
 
-describe.skip('P2PTrade Protocol', function(){ // FIXME get test to work
+MockStore.prototype.clear = function () {
+  this.dict = {}
+}
+MockStore.prototype.getAll = function () {
+  return this.dict
+}
+
+describe.skip('P2PTrade Protocol', function(){
 
   var walletAlice
   var ewctrlAlice
@@ -57,26 +66,38 @@ describe.skip('P2PTrade Protocol', function(){ // FIXME get test to work
     var seedAlice = BIP39.mnemonicToSeedHex(alice.mnemonic, alice.password)
     walletAlice = new ccWallet({
       testnet: true,
+      networks: [{name: 'ElectrumJS', args: [{testnet: true}]}],
+      autoConnect: false,
+      store: new MockStore(),
+      blockchain: {name: 'Naive'},
+      spendUnconfirmedCoins: true,
       systemAssetDefinitions: assetdefs
     })
-    walletAlice.config = new HackConfigStorage()
+    walletAlice.getNetwork().connect()
     walletAlice.initialize(seedAlice)
     ewctrlAlice = new EWalletController(walletAlice, seedAlice)
     ewctrlAlice.neverSendOnPublishTx = true
     commAlice = new ThreadedComm(commConfig, commUrl)
+    commAlice.start()
     agentAlice = new EAgent(ewctrlAlice, agentConfig, commAlice)
 
     // setup bob
     seedBob = BIP39.mnemonicToSeedHex(bob.mnemonic, bob.password)
     walletBob = new ccWallet({
       testnet: true,
+      networks: [{name: 'ElectrumJS', args: [{testnet: true}]}],
+      autoConnect: false,
+      store: new MockStore(),
+      blockchain: {name: 'Naive'},
+      spendUnconfirmedCoins: true,
       systemAssetDefinitions: assetdefs
     })
-    walletBob.config = new HackConfigStorage()
+    walletBob.getNetwork().connect()
     walletBob.initialize(seedBob)
     ewctrlBob = new EWalletController(walletBob, seedBob)
     ewctrlBob.neverSendOnPublishTx = true
     commBob = new ThreadedComm(commConfig, commUrl)
+    commBob.start()
     agentBob = new EAgent(ewctrlBob, agentConfig, commBob)
 
     // sync wallets
@@ -89,28 +110,38 @@ describe.skip('P2PTrade Protocol', function(){ // FIXME get test to work
   afterEach(function () {
 
     // alice
+    walletAlice.getNetwork().disconnect()
     walletAlice.removeListeners()
     walletAlice.clearStorage()
+    commAlice.stop()
     walletAlice = undefined
+    ewctrlAlice = undefined
+    commAlice = undefined
+    agentAlice = undefined
 
     // bob
+    walletBob.getNetwork().disconnect()
     walletBob.removeListeners()
     walletBob.clearStorage()
+    commBob.stop()
     walletBob = undefined
+    ewctrlBob = undefined
+    commBob = undefined
+    agentBob = undefined
   })
 
   it('standard usage', function(done){
 
     var offerAlice = new EOffer( // offer gold for bitcoin
       null, // create random oid
-      { "color_spec": "epobc:b95323a763fa507110a89ab857af8e949810cf1e67e91104cd64222a04ccd0bb:0:180679", "value": 50000 },
+      { "color_spec": color_spec, "value": 50000 },
       { "color_spec": "", "value": 100000 }
     )
 
     var offerBob = new EOffer( // offer bitcoin for gold
       null, // create random oid
       { "color_spec": "", "value": 100000 },
-      { "color_spec": "epobc:b95323a763fa507110a89ab857af8e949810cf1e67e91104cd64222a04ccd0bb:0:180679", "value": 50000 }
+      { "color_spec": color_spec, "value": 50000 }
     )
 
     expect(offerAlice.matches(offerBob)).to.be.true
@@ -123,8 +154,6 @@ describe.skip('P2PTrade Protocol', function(){ // FIXME get test to work
 
       // bob sends exchange proposal
       agentBob.update()
-      console.log("agentBob.theirOffers")
-      console.log(agentBob.theirOffers)
       if(!agentBob.hasActiveEP()) { throw new Error("no active ep bob") }
       expect(agentBob.hasActiveEP()).to.be.true
       setTimeout(function(){ // wait for bob to send exchange proposal
@@ -137,13 +166,13 @@ describe.skip('P2PTrade Protocol', function(){ // FIXME get test to work
 
           // bob accepts exchange proposal and publishes tx
           agentBob.update()
-          
-          // TODO check logged tx 
+
+          // TODO check logged tx
           expect(ewctrlBob.publishedTxLog.length).to.equal(1)
 
           done()
-        }, 5000)
-      }, 5000)
-    }, 5000)
+        }, 10000)
+      }, 10000)
+    }, 10000)
   })
 })

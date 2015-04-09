@@ -286,7 +286,9 @@ EWalletController.prototype.makeEtxSpec = function(our, their, cb){
 }
 
 EWalletController.prototype.getNewAddress = function(colorDef){
-  return this.wallet.getNewAddress(this.getSeedHex(), colorDef)
+  var adm = this.wallet.getAssetDefinitionManager()
+  var assetDef = adm.getByDesc(colorDef.getDesc())
+  return this.wallet.getNewAddress(this.getSeedHex(), assetDef)
 }
 
 EWalletController.prototype.makeReplyTx = function(etxSpec, our, their, cb){

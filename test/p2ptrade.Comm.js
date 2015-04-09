@@ -4,6 +4,7 @@ var MessageIO = require('../src/p2ptrade').Comm.MessageIO
 var CommBase = require('../src/p2ptrade').Comm.CommBase
 var ThreadedComm = require('../src/p2ptrade').Comm.ThreadedComm
 var ThreadedComm = require('../src/p2ptrade').Comm.ThreadedComm
+var makeRandomId = require('../src/p2ptrade').Utils.makeRandomId
 
 var MESSAGES = JSON.parse('[{"content": {"A": {"color_spec": "obc:ca99e77717e7d79001d3b876272ab118133a69cc7cbd4bf89d523f1be5607095:0:277127", "value": 100}, "msgid": "2050de1a0bc6db0b", "B": {"color_spec": "", "value": 10000000}, "oid": "1fd1f7b6c9be0ae6"}, "timestamp": 1414688356, "serial": 100033, "id": "1fd1f7b6c9be0ae6"}, {"content": {"A": {"color_spec": "", "value": 4000000}, "msgid": "99e8245205e00778", "B": {"color_spec": "obc:ca99e77717e7d79001d3b876272ab118133a69cc7cbd4bf89d523f1be5607095:0:277127", "value": 40}, "oid": "dba9a94ec735428a"}, "timestamp": 1414688387, "serial": 100034, "id": "dba9a94ec735428a"}]')
 
@@ -95,6 +96,31 @@ describe('P2PTrade Comm', function(){
       messageio.post(url, content, function(error){
         expect(error).to.be.null
         done()
+      })
+    })
+
+    it('roundtrip', function(done){
+      var url = "http://p2ptrade.btx.udoidio.info/messages"
+      var content = { msgid: makeRandomId(), oid: makeRandomId() }
+      var messageio = new MessageIO()
+      messageio.post(url, content, function(error){
+        expect(error).to.be.null
+
+        setTimeout(function(){ // wait for message to propagate
+          messageio.poll(url, function(error, messages){
+            expect(error).to.be.null
+            var found = false
+            messages.forEach(function(message){ 
+              if(message.content.oid == content.oid && 
+                 message.content.msgid == content.msgid){
+                found = true
+              }
+            })
+            expect(found).to.be.true
+            done()
+          })
+        }, 10000)
+
       })
     })
 

@@ -55,8 +55,6 @@ CommBase.prototype.poll = function(){
 }
 
 
-
-
 /**
  * @class ThreadedComm
  */
