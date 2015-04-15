@@ -16,11 +16,11 @@ var color_spec = assetdefs[0]["colorDescs"][0] // gold
 
 // settings
 var agentConfig = {
-  ep_expiry_interval: 42,
-  offer_expiry_interval: 42,
+  ep_expiry_interval: 30,
+  offer_expiry_interval: 30,
   offer_grace_interval: 0
 }
-var commConfig = { offer_expiry_interval : 1 }
+var commConfig = { offer_expiry_interval : 30 }
 var commUrl = "http://p2ptrade.btx.udoidio.info/messages"
 
 function MockStore(){
@@ -47,7 +47,7 @@ MockStore.prototype.getAll = function () {
   return this.dict
 }
 
-describe.skip('P2PTrade Protocol', function(){
+describe('P2PTrade Protocol', function(){
 
   var walletAlice
   var ewctrlAlice
@@ -80,6 +80,7 @@ describe.skip('P2PTrade Protocol', function(){
     commAlice = new ThreadedComm(commConfig, commUrl)
     commAlice.start()
     agentAlice = new EAgent(ewctrlAlice, agentConfig, commAlice)
+    agentAlice.name = "alice"
 
     // setup bob
     seedBob = BIP39.mnemonicToSeedHex(bob.mnemonic, bob.password)
@@ -99,6 +100,7 @@ describe.skip('P2PTrade Protocol', function(){
     commBob = new ThreadedComm(commConfig, commUrl)
     commBob.start()
     agentBob = new EAgent(ewctrlBob, agentConfig, commBob)
+    agentBob.name = "bob"
 
     // sync wallets
     walletAlice.once('syncStop', function(error){
@@ -135,12 +137,12 @@ describe.skip('P2PTrade Protocol', function(){
     var offerAlice = new EOffer( // offer gold for bitcoin
       null, // create random oid
       { "color_spec": color_spec, "value": 50000 },
-      { "color_spec": "", "value": 100000 }
+      { "color_spec": "", "value": 200000 }
     )
 
     var offerBob = new EOffer( // offer bitcoin for gold
       null, // create random oid
-      { "color_spec": "", "value": 100000 },
+      { "color_spec": "", "value": 200000 },
       { "color_spec": color_spec, "value": 50000 }
     )
 
@@ -149,28 +151,34 @@ describe.skip('P2PTrade Protocol', function(){
     agentBob.registerMyOffer(offerBob)
 
     // alice sends exchange offer
+    console.log("##### 1 alice sends exchange offer")
     agentAlice.update()
     setTimeout(function(){ // wait for alice to send exchange offer
 
       // bob sends exchange proposal
+      console.log("##### 2 bob sends exchange proposal")
       agentBob.update()
-      if(!agentBob.hasActiveEP()) { throw new Error("no active ep bob") }
-      expect(agentBob.hasActiveEP()).to.be.true
       setTimeout(function(){ // wait for bob to send exchange proposal
+        if(!agentBob.hasActiveEP()) { throw new Error("no active ep bob") }
+        expect(agentBob.hasActiveEP()).to.be.true
 
         // alice sends exchange proposal reply
+        console.log("##### 3 alice sends exchange proposal reply")
         agentAlice.update()
-        if(!agentAlice.hasActiveEP()) { throw new Error("no active ep alice") }
-        expect(agentAlice.hasActiveEP()).to.be.true
         setTimeout(function(){ // wait for alice to send exchange proposal reply
+          if(!agentAlice.hasActiveEP()) { throw new Error("no active ep alice") }
+          expect(agentAlice.hasActiveEP()).to.be.true
 
           // bob accepts exchange proposal and publishes tx
+          console.log("##### 4 bob accepts exchange proposal and publishes tx")
           agentBob.update()
+          setTimeout(function(){ // XXX wait for async bob accept to finish
 
-          // TODO check logged tx
-          expect(ewctrlBob.publishedTxLog.length).to.equal(1)
+            // TODO check logged tx
+            expect(ewctrlBob.publishedTxLog.length).to.equal(1)
 
-          done()
+            done()
+          }, 10000)
         }, 10000)
       }, 10000)
     }, 10000)

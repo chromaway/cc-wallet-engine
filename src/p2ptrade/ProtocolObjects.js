@@ -107,22 +107,19 @@ MyEProposal.prototype.getData = function(){
   return res
 }
 
-MyEProposal.prototype.processReply = function(reply_ep){
+MyEProposal.prototype.processReply = function(reply_ep, cb){
+  var self = this
   var rtxs = RawTx.fromHex(reply_ep.etx_data)
-  if(this.ewctrl.checkTx(rtxs, this.etx_spec)){
-    var wallet = this.ewctrl.wallet
-    var seedHex = this.ewctrl.getSeedHex()
-    var cb = function(error){
-      if(error){
-        throw Error("Sign raw tx failed!")
-      }
+  var wallet = self.ewctrl.wallet
+  var seedHex = self.ewctrl.getSeedHex()
+  rtxs.sign(wallet, seedHex, function(error){
+    if(error){
+      return cb(new Error("Sign raw tx failed!"))
     }
-    rtxs.sign(wallet, seedHex, cb)
-    this.ewctrl.publishTX(rtxs) 
-    this.etx_data = rtxs.toHex(false)
-  } else {
-    throw new Error("p2ptrade reply tx check failed")
-  }
+    self.ewctrl.publishTX(rtxs) 
+    self.etx_data = rtxs.toHex(false)
+    cb(null)
+  })
 }
 
 
@@ -144,13 +141,14 @@ MyReplyEProposal.prototype.getData = function(){
 }
 
 MyReplyEProposal.prototype.validate = function(cb){
-  var acd = this.ewctrl.resolveColorDesc(this.my_offer.A['color_spec'])
-  var bcd = this.ewctrl.resolveColorDesc(this.my_offer.B['color_spec'])
-  var acv = new ColorValue(acd, this.my_offer.A['value'])
-  var bcv = new ColorValue(bcd, this.my_offer.B['value'])
-  var rawTx = RawTx.fromComposedTx(this.tx)
-  var maxfee = 50000 // 0.5mBTC FIXME load from cfg or determan based on network
-  rawTx.satisfiesDeltas(this.ewctrl.wallet, [ acv.neg(), bcv ], maxfee, cb)
+  var self = this
+  var acd = self.ewctrl.resolveColorDesc(self.my_offer.A['color_spec'])
+  var bcd = self.ewctrl.resolveColorDesc(self.my_offer.B['color_spec'])
+  var acv = new ColorValue(acd, self.my_offer.A['value'])
+  var bcv = new ColorValue(bcd, self.my_offer.B['value'])
+  var rawTx = RawTx.fromTransaction(self.tx)
+  //var maxfee = 50000 // 0.5mBTC FIXME load from cfg and use it
+  rawTx.satisfiesDeltas(self.ewctrl.wallet, [ acv.neg(), bcv ], true, cb)
 }
 
 /**

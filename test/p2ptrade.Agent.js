@@ -270,12 +270,16 @@ describe('P2PTrade Agent', function(){
     expect(agent.theirOffers).to.deep.equal({test:offer}) // offer saved
   })
 
-  it('matchOffers does nothing if has active ep ', function(){
+  it('matchOffers does nothing if has active ep ', function(done){
     agent.setActiveEP("test")
-    expect(agent.matchOffers()).to.be.false
+    agent.matchOffers(function(error, ep){
+      expect(error).to.be.null
+      expect(ep).to.be.null
+      done()
+    })
   })
 
-  it('matchOffers ignores unmatching', function(){
+  it('matchOffers ignores unmatching', function(done){
     var my_offer = EOffer.fromData({
       "oid": "my_oid",
       "A": { "color_spec": "mock_my_color_spec", "value": 100000 }, 
@@ -288,7 +292,11 @@ describe('P2PTrade Agent', function(){
     })
     agent.registerMyOffer(my_offer)
     agent.registerTheirOffer(their_offer)
-    expect(agent.matchOffers()).to.be.false
+    agent.matchOffers(function(error, ep){
+      expect(error).to.be.null
+      expect(ep).to.be.null
+      done()
+    })
   })
 
   it('matchOffers finds matching', function(done){
@@ -304,14 +312,17 @@ describe('P2PTrade Agent', function(){
     })
     agent.registerMyOffer(my_offer)
     agent.registerTheirOffer(their_offer)
-    expect(agent.matchOffers()).to.be.true
+    agent.matchOffers(function(error, ep){
+      expect(error).to.be.null
+      expect(ep).to.not.be.null
 
-    // check if makeExchangeProposal called
-    setTimeout(function(){
+      // check if makeExchangeProposal called
       expect(agent.hasActiveEP()).to.be.true
       expect(comm.messages.length > 0).to.be.true
       done()
-    }, 500)
+    })
+
+
   })
 
   it('makeExchangeProposal', function(done){
