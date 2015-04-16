@@ -82,6 +82,16 @@ EProposal.prototype.getData = function(){
   return {pid:this.pid, offer:this.offer.getData()}
 }
 
+EProposal.prototype.validate = function(rawTx, cb){
+  var self = this
+  var acd = self.ewctrl.resolveColorDesc(self.my_offer.A['color_spec'])
+  var bcd = self.ewctrl.resolveColorDesc(self.my_offer.B['color_spec'])
+  var acv = new ColorValue(acd, self.my_offer.A['value'])
+  var bcv = new ColorValue(bcd, self.my_offer.B['value'])
+  //var maxfee = 50000 // 0.5mBTC FIXME load from cfg and use it
+  rawTx.satisfiesDeltas(self.ewctrl.wallet, [ acv.neg(), bcv ], true, cb)
+}
+
 /**
  * @class MyEProposal
  */
@@ -109,16 +119,17 @@ MyEProposal.prototype.getData = function(){
 
 MyEProposal.prototype.processReply = function(reply_ep, cb){
   var self = this
-  var rtxs = RawTx.fromHex(reply_ep.etx_data)
+  var rawTx = RawTx.fromHex(reply_ep.etx_data)
   var wallet = self.ewctrl.wallet
   var seedHex = self.ewctrl.getSeedHex()
-  rtxs.sign(wallet, seedHex, function(error){
-    if(error){
-      return cb(new Error("Sign raw tx failed!"))
-    }
-    self.ewctrl.publishTX(rtxs) 
-    self.etx_data = rtxs.toHex(false)
-    cb(null)
+  rawTx.sign(wallet, seedHex, function(error){
+    if(error){ return cb(error) }
+    self.validate(rawTx, function (error){
+      if(error){ return cb(error) }
+      self.ewctrl.publishTX(rawTx) 
+      self.etx_data = rawTx.toHex(false)
+      cb(null)
+    })
   })
 }
 
@@ -138,17 +149,6 @@ MyReplyEProposal.prototype.getData = function(){
   var data = EProposal.prototype.getData.apply(this)
   data['etx_data'] = this.tx.toHex()
   return data
-}
-
-MyReplyEProposal.prototype.validate = function(cb){
-  var self = this
-  var acd = self.ewctrl.resolveColorDesc(self.my_offer.A['color_spec'])
-  var bcd = self.ewctrl.resolveColorDesc(self.my_offer.B['color_spec'])
-  var acv = new ColorValue(acd, self.my_offer.A['value'])
-  var bcv = new ColorValue(bcd, self.my_offer.B['value'])
-  var rawTx = RawTx.fromTransaction(self.tx)
-  //var maxfee = 50000 // 0.5mBTC FIXME load from cfg and use it
-  rawTx.satisfiesDeltas(self.ewctrl.wallet, [ acv.neg(), bcv ], true, cb)
 }
 
 /**

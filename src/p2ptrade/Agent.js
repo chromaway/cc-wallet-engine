@@ -5,6 +5,8 @@ var unixTime = require('./Utils').unixTime
 var MyEProposal = require('./ProtocolObjects').MyEProposal
 var ForeignEProposal = require('./ProtocolObjects').ForeignEProposal
 var EOffer = require('./ProtocolObjects').EOffer
+var WalletCore = require('cc-wallet-core');
+var RawTx = WalletCore.tx.RawTx;
 
 /**
  * Implements high-level exchange logic
@@ -167,13 +169,6 @@ EAgent.prototype.dispatchExchangeProposal = function(ep_data, cb){
   cb(null)
 }
 
-EAgent.prototype.isValidForeignEPReply = function(foreign_ep, my_ep){
-  // FIXME implement
-
-  
-  return true
-}
-
 EAgent.prototype.acceptExchangeProposal = function(ep, cb){
   var self = this
   self.activeExchangeProposalLock = true
@@ -191,7 +186,8 @@ EAgent.prototype.acceptExchangeProposal = function(ep, cb){
       self.activeExchangeProposalLock = false
       return cb(error) 
     }
-    replyEP.validate(function(error){
+    var rawTx = RawTx.fromTransaction(replyEP.tx)
+    replyEP.validate(rawTx, function(error){
       if(error){ 
         self.activeExchangeProposalLock = false
         return cb(error) 
@@ -221,13 +217,6 @@ EAgent.prototype.finishExchangeProposal = function(ep, cb){
   var self = this
   self.activeExchangeProposalLock = true
   var my_ep = self.activeEP
-  if(!self.isValidForeignEPReply(ep, my_ep)){
-    // invalid ep should be viewed as likely malicious and everything aborted
-    self.clearOrders(my_ep)
-    self.setActiveEP(null)
-    self.activeExchangeProposalLock = false
-    return cb(new Error("Invalid foreign exchange proposal!"))
-  }
   my_ep.processReply(ep, function(error){
     if(error){ 
       self.activeExchangeProposalLock = false
