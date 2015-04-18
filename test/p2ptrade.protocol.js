@@ -73,7 +73,7 @@ describe('P2PTrade Protocol', function(){
       spendUnconfirmedCoins: true,
       systemAssetDefinitions: assetdefs
     })
-    walletAlice.getNetwork().connect()
+    walletAlice.getConnector().connect()
     walletAlice.initialize(seedAlice)
     ewctrlAlice = new EWalletController(walletAlice, seedAlice)
     ewctrlAlice.neverSendOnPublishTx = true
@@ -93,7 +93,7 @@ describe('P2PTrade Protocol', function(){
       spendUnconfirmedCoins: true,
       systemAssetDefinitions: assetdefs
     })
-    walletBob.getNetwork().connect()
+    walletBob.getConnector().connect()
     walletBob.initialize(seedBob)
     ewctrlBob = new EWalletController(walletBob, seedBob)
     ewctrlBob.neverSendOnPublishTx = true
@@ -112,7 +112,7 @@ describe('P2PTrade Protocol', function(){
   afterEach(function () {
 
     // alice
-    walletAlice.getNetwork().disconnect()
+    walletAlice.getConnector().disconnect()
     walletAlice.removeListeners()
     walletAlice.clearStorage()
     commAlice.stop()
@@ -122,7 +122,7 @@ describe('P2PTrade Protocol', function(){
     agentAlice = undefined
 
     // bob
-    walletBob.getNetwork().disconnect()
+    walletBob.getConnector().disconnect()
     walletBob.removeListeners()
     walletBob.clearStorage()
     commBob.stop()

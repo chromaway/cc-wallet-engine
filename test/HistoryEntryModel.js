@@ -35,7 +35,7 @@ describe('HistoryEntryModel', function () {
 
   afterEach(function () {
     historyEntry = null
-    wallet.getWallet().getNetwork().disconnect()
+    wallet.getWallet().getConnector().disconnect()
     wallet.removeListeners()
     wallet.clearStorage()
     wallet = null

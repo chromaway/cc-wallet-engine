@@ -58,7 +58,7 @@ describe('CWPPPaymentModel', function () {
   })
 
   after(function () {
-    walletEngine.getWallet().getNetwork().disconnect()
+    walletEngine.getWallet().getConnector().disconnect()
     walletEngine.removeListeners()
     walletEngine = null
     localStorage.clear()
