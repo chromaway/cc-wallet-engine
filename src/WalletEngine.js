@@ -404,4 +404,19 @@ WalletEngine.prototype.clearStorage = function () {
 }
 
 
+WalletEngine.prototype._getSyncingStatus = function () {
+  var w = this.getWallet();
+  var syncingObjects = {
+    WalletEngine: this,
+    Wallet: w,
+    Blockchain: w.getBlockchain(),
+    WalletEventNotifier: w.walletEventNotifier,
+    WalletStateManager: w.getStateManager()
+  };
+
+  return syncingObjects.map(function (obj) {
+    return obj.isSyncing()
+  })
+}
+
 module.exports = WalletEngine
