@@ -20,7 +20,7 @@ describe('WalletEngine', function () {
   })
 
   afterEach(function () {
-    walletEngine.getWallet().getNetwork().disconnect()
+    walletEngine.getWallet().getConnector().disconnect()
     walletEngine.removeListeners()
     walletEngine.clearStorage()
     walletEngine = null

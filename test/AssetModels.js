@@ -27,7 +27,7 @@ describe('AssetModels', function () {
   afterEach(function () {
     assetModels.removeListeners()
     assetModels = null
-    wallet.getNetwork().disconnect()
+    wallet.getConnector().disconnect()
     wallet.removeListeners()
     wallet.clearStorage()
     wallet = null

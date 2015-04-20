@@ -41,7 +41,7 @@ describe('PaymentModel', function () {
   })
 
   after(function () {
-    walletEngine.getWallet().getNetwork().disconnect()
+    walletEngine.getWallet().getConnector().disconnect()
     walletEngine.removeListeners()
     walletEngine = null
     localStorage.clear()
@@ -87,6 +87,7 @@ describe('PaymentModel', function () {
     paymentModel.addRecipient('n2f687HTAW5R8pg6DRVHn5AS1a2hAK5WgW', '0.001')
     paymentModel.setSeed(seed)
     paymentModel.send(function (error) {
+      if (error) console.error(error)
       expect(error).to.be.null
       done()
     })
