@@ -174,13 +174,11 @@ WalletEngine.prototype.forceRefresh = function () {
 }
 
 WalletEngine.prototype.connect = function () {
-  var network = this._wallet.getConnector()
-  network.connect()
+  this.wallet.connect()
 }
 
 WalletEngine.prototype.disconnect = function () {
-  var network = this._wallet.getConnector()
-  network.disconnect()
+  this.wallet.disconnect()
 }
 
 
