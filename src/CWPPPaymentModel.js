@@ -53,7 +53,15 @@ CWPPPaymentModel.prototype.initialize = function (cb) {
       throw new errors.RequestError('CWPPPaymentModel: ' + response.statusMessage)
     }
 
+    if (!cwpp.hashMessage(body) === cwpp.getURIHash(self.paymentURI)) {
+      throw new errors.PaymentError('PaymentRequest hash mismatch')
+    }
+
     self.payreq = body
+
+    if (self.payreq.acceptedMethods['cinputs'] !== true) {
+      throw new errors.PaymentError('incompatible payment method. upgrade required?')
+    }
 
     var assetId = self.payreq.assetId
     self.assetModel = self.walletEngine.getAssetModelById(assetId)
@@ -140,7 +148,7 @@ CWPPPaymentModel.prototype._checkRawTx = function (rawTx, cinputs, change, color
       .map(function (key) { return txInputs[key] })
       .value()
 
-    if (indexes.length > 0) {
+    if (indexes.length === 0) {
       return
     }
 
@@ -154,16 +162,24 @@ CWPPPaymentModel.prototype._checkRawTx = function (rawTx, cinputs, change, color
     // check outputs
     var assetdef = self.assetModel.getAssetDefinition()
     var fromBase58Check = cclib.bitcoin.Address.fromBase58Check
-    var recipients = _.cloneDeep(self.recipients)
+
+    var value = self.payreq.value
+    if (self.payreq.fee && self.payreq.fee > 0) {
+      value -= self.payreq.fee
+    }
+
+    var targets = [{address: self.payreq.address,
+                    value: value}]
     if (change !== null) {
-      recipients.push({
+      targets.push({
         address: change.address,
-        amount: assetdef.formatValue(change.value)
+        value: change.value
       })
     }
-    var colorTargets = recipients.map(function (recipient) {
+
+    var colorTargets = targets.map(function (recipient) {
       var script = fromBase58Check(recipient.address).toOutputScript().toHex()
-      var amount = assetdef.parseValue(recipient.amount)
+      var amount = recipient.value
       var colorValue = new cclib.ColorValue(colordef, amount)
       return new cclib.ColorTarget(script, colorValue)
     })
@@ -173,7 +189,6 @@ CWPPPaymentModel.prototype._checkRawTx = function (rawTx, cinputs, change, color
         throw new errors.CWPPWrongTxError('Wrong outputs')
       }
     })
-
   })
 }
 
@@ -233,10 +248,13 @@ CWPPPaymentModel.prototype.send = function (cb) {
   }
 
   var wallet = self.walletEngine.getWallet()
+  console.log('CWPP: selectCoins')
   Q.ninvoke(self, 'selectCoins').spread(function (cinputs, change, colordef) {
     // service build transaction
+    console.log('CWPP: sending inputs')
     var msg = cwpp.make_cinputs_proc_req_1(colordef.getDesc(), cinputs, change)
     return cwppProcess(msg).then(function (response) {
+      console.log('CWPP: check tx')
       var rawTx = RawTx.fromHex(response.tx_data)
       // check inputs and outputs
       return self._checkRawTx(rawTx, cinputs, change, colordef).then(function () {
@@ -244,6 +262,7 @@ CWPPPaymentModel.prototype.send = function (cb) {
       })
 
     }).then(function (rawTx) {
+      console.log('CWPP: sign tx')
       // we signing transaction
       var tx = rawTx.toTransaction(true)
       var txInputs = _.zipObject(tx.ins.map(function (input, index) {
@@ -259,16 +278,17 @@ CWPPPaymentModel.prototype.send = function (cb) {
     })
 
   }).then(function (tx) {
+    console.log('CWPP: sending partially-signed transaction')
     // service signing transaction
     var msg = cwpp.make_cinputs_proc_req_2(tx.toHex(true))
     return cwppProcess(msg)
 
   }).then(function (response) {
+    console.log('CWPP: sending fully signed transaction to the network')
     // build transaction and send
     var tx = RawTx.fromHex(response.tx_data).toTransaction()
     self.txId = tx.getId()
     return Q.ninvoke(wallet, 'sendTx', tx)
-
   }).done(
     function () {
       self.status = 'send'

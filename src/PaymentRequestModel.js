@@ -5,6 +5,8 @@ var verify = require('cc-wallet-core').verify
 
 var errors = require('./errors')
 var cwpp = require('./cwpp')
+var stringify = require('json-stable-stringify')
+
 
 
 /**
@@ -63,13 +65,16 @@ PaymentRequestModel.prototype.getPaymentURI = function (cb) {
     var requestOpts = {
       method: 'POST',
       uri: 'http://' + self.props.cwpp_host + '/cwpp/new-request',
-      body: JSON.stringify(self.cwppPayReq),
+      body: stringify(self.cwppPayReq),
       json: true
     }
 
     self.paymentURI = Q.nfcall(request, requestOpts).spread(function (response, body) {
       if (response.statusCode !== 200) {
         throw new errors.RequestError('PaymentRequestModel: ' + response.statusMessage)
+      }
+      if (body.hash !== cwpp.hashMessage(self.cwppPayReq)) {
+        throw new erorrs.RequestError("PaymentRequest hash doesn't match")
       }
 
       return cwpp.make_cwpp_uri(self.props.cwpp_host, body.hash)

@@ -1,3 +1,6 @@
+var stringify = require('json-stable-stringify');
+var SHA256 = require('crypto-js/sha256');
+
 /**
  */
 exports.make_cinputs_payment_request = function (value, address, assetId, colorDesc) {
@@ -68,4 +71,22 @@ exports.processURL = function (uri) {
   if (!exports.is_cwpp_uri(uri)) { return null }
 
   return exports.requestURL(uri).replace('/cwpp/', '/cwpp/process/')
+}
+
+/**
+ * @param {string} uri
+ * @return {?string}
+ */
+exports.getURIHash = function getURIHash (uri) {
+  if (!exports.is_cwpp_uri(uri)) { return null }
+  var result = (new RegExp("/cwpp/(.+)$")).exec(uri)
+  if (result) {
+    return result[1]
+  } else {
+    return null
+  }
+}
+
+exports.hashMessage = function (body) {
+  return SHA256(stringify(body)).toString();  
 }
