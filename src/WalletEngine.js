@@ -174,11 +174,11 @@ WalletEngine.prototype.forceRefresh = function () {
 }
 
 WalletEngine.prototype.connect = function () {
-  this.wallet.connect()
+  this._wallet.connect()
 }
 
 WalletEngine.prototype.disconnect = function () {
-  this.wallet.disconnect()
+  this._wallet.disconnect()
 }
 
 
