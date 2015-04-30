@@ -40,7 +40,8 @@ function PaymentRequestModel(wallet, assetdef, props) {
   }
 
   if (_.isUndefined(props.cwpp_host)) {
-    props.cwpp_host = 'cwpp.chromapass.net'
+    var networkName = this.wallet.getNetworkName()
+    props.cwpp_host = networkName + '.cwpp.chromapass.net'
   }
 
   var value = assetdef.parseValue(props.amount)
