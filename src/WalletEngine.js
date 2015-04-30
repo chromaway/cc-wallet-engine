@@ -187,6 +187,8 @@ WalletEngine.prototype.disconnect = function () {
  */
 WalletEngine.prototype.generateMnemonic = BIP39.generateMnemonic
 
+WalletEngine.prototype.validateMnemonic = BIP39.validateMnemonic
+
 /**
  * @param {string} mnemonic
  * @param {string} password
