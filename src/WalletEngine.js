@@ -13,7 +13,7 @@ var cwpp = require('./cwpp')
 var CWPPPaymentModel = require('./CWPPPaymentModel')
 var HistoryEntryModel = require('./HistoryEntryModel')
 var errors = require('./errors')
-
+var _ = require('lodash')
 
 /**
  * @event WalletEngine#error
@@ -412,9 +412,9 @@ WalletEngine.prototype._getSyncingStatus = function () {
     Blockchain: w.getBlockchain(),
     WalletEventNotifier: w.walletEventNotifier,
     WalletStateManager: w.getStateManager()
-  };
+  }
 
-  return syncingObjects.map(function (obj) {
+  return _.mapValues(syncingObjects, function (obj) {
     return obj.isSyncing()
   })
 }
