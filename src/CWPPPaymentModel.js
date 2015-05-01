@@ -74,7 +74,7 @@ CWPPPaymentModel.prototype.initialize = function (cb) {
 
     self.recipients = [{
       address: colorAddress,
-      amount: self.assetModel.getAssetDefinition().formatValue(self.payreq.value)
+      amount: self.payreq.value && self.assetModel.getAssetDefinition().formatValue(self.payreq.value)
     }]
     self.state = 'fresh'
 

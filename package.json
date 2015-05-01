@@ -22,7 +22,7 @@
     "url": "git://github.com/chromaway/cc-wallet-engine.git", 
     "type": "git"
   }, 
-  "version": "0.6.2", 
+  "version": "0.6.3", 
   "dependencies": {
     "crypto-js": "3.1.2-5", 
     "set": "1.1.1", 
