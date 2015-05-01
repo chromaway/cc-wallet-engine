@@ -69,8 +69,11 @@ CWPPPaymentModel.prototype.initialize = function (cb) {
       throw new errors.AssetNotRecognizedError('CWPPPaymentModel.initialize')
     }
 
+    // TODO this is hackish, move this to AssetDefinition
+    var colorAddress = assetId + '@' + self.payreq.address
+
     self.recipients = [{
-      address: self.payreq.address,
+      address: colorAddress,
       amount: self.assetModel.getAssetDefinition().formatValue(self.payreq.value)
     }]
     self.state = 'fresh'
