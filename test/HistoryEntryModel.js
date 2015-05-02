@@ -1,5 +1,5 @@
 var expect = require('chai').expect
-
+var _ = require('lodash')
 var moment = require('moment')
 
 var WalletEngine = require('../src/WalletEngine')
@@ -79,4 +79,18 @@ describe('HistoryEntryModel', function () {
   it('getTransactionType', function () {
     expect(historyEntry.getTransactionType()).to.equal('Receive')
   })
+
+  it('getTxStatus', function () {
+    var st = historyEntry.getTxStatus()
+    expect(_.isNumber(st.status)).to.be.true
+    expect(_.isString(st.statusString)).to.be.true
+  })
+  it('getTxStatusEnum', function () {
+    var stEnum = historyEntry.getTxStatusEnum()
+    expect(_.isFunction(stEnum.isConfirmed)).to.be.true
+  })
+
+}
+
+  
 })

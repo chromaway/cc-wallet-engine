@@ -1,5 +1,10 @@
 var moment = require('moment')
 var HistoryTargetModel = require('./HistoryTargetModel')
+var TX_STATUS =  require('cc-wallet-core').const.TX_STATUS
+var _ = require('lodash')
+
+
+var statusVsString = _.invert(_.pick(TX_STATUS, _.isNumber));
 
 
 /**
@@ -24,6 +29,19 @@ HistoryEntryModel.prototype.getTxId = function () {
   return this.historyEntry.getTxId()
 }
 
+HistoryEntryModel.prototype.getTxStatus = function () {
+  var x = this.historyEntry.getTxStatus();
+  return {
+    statusCode: x,
+    statusString: statusVsString[x]
+  }
+}
+
+HistoryEntryModel.prototype.getTxStatusEnum = function () {
+  return TX_STATUS;
+}
+
+
 /**
  * @return {string}
  */
@@ -44,9 +62,6 @@ HistoryEntryModel.prototype.getValues = function () {
     return av.getAsset().formatValue(av.getValue())
   })
 }
-
-/**
- * @return {HistoryTargetModel[]}
  */
 HistoryEntryModel.prototype.getTargets = function () {
   return this.historyEntry.getTargets().map(function (at) {
@@ -58,7 +73,6 @@ HistoryEntryModel.prototype.getTargets = function () {
  * @return {boolean}
  */
 HistoryEntryModel.prototype.isSend = function () {
-  return this.historyEntry.isSend()
 }
 
 /**
