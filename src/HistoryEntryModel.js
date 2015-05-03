@@ -62,7 +62,7 @@ HistoryEntryModel.prototype.getValues = function () {
     return av.getAsset().formatValue(av.getValue())
   })
 }
- */
+
 HistoryEntryModel.prototype.getTargets = function () {
   return this.historyEntry.getTargets().map(function (at) {
     return new HistoryTargetModel(at)
@@ -73,6 +73,7 @@ HistoryEntryModel.prototype.getTargets = function () {
  * @return {boolean}
  */
 HistoryEntryModel.prototype.isSend = function () {
+  return this.historyEntry.isSend()
 }
 
 /**
