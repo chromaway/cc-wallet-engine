@@ -53,7 +53,10 @@ CWPPPaymentModel.prototype.initialize = function (cb) {
       throw new errors.RequestError('CWPPPaymentModel: ' + response.statusMessage)
     }
 
-    if (cwpp.hashMessage(body) !== cwpp.getURIHash(self.paymentURI)) {
+    var cwppURIHash = cwpp.getURIHash(self.paymentURI)
+
+    if ((cwpp.hashMessage_long(body) !== cwppURIHash) &&
+        (cwpp.hashMessage_short(body) !== cwppURIHash)) {
       throw new errors.PaymentError('PaymentRequest hash mismatch')
     }
 

@@ -41,7 +41,8 @@ function PaymentRequestModel(wallet, assetdef, props) {
 
   if (_.isUndefined(props.cwpp_host)) {
     var networkName = this.wallet.getNetworkName()
-    props.cwpp_host = networkName + '.cwpp.chromapass.net'
+    // use the first character of networkName, l for livenet and t for testnet
+    props.cwpp_host = networkName[0] + '.cwpp.chromapass.net'
   }
 
   var value = assetdef.parseValue(props.amount)
@@ -74,7 +75,9 @@ PaymentRequestModel.prototype.getPaymentURI = function (cb) {
       if (response.statusCode !== 200) {
         throw new errors.RequestError('PaymentRequestModel: ' + response.statusMessage)
       }
-      if (body.hash !== cwpp.hashMessage(self.cwppPayReq)) {
+
+      if ((body.hash !== cwpp.hashMessage_long(self.cwppPayReq) &&
+          (body.hash !== cwpp.hashMessage_short(self.cwppPayReq)))) {
         throw new errors.RequestError('PaymentRequest hash doesn\'t match')
       }
 
