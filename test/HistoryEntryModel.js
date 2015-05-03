@@ -82,15 +82,13 @@ describe('HistoryEntryModel', function () {
 
   it('getTxStatus', function () {
     var st = historyEntry.getTxStatus()
-    expect(_.isNumber(st.status)).to.be.true
+    expect(_.isNumber(st.statusCode)).to.be.true
     expect(_.isString(st.statusString)).to.be.true
   })
+
   it('getTxStatusEnum', function () {
     var stEnum = historyEntry.getTxStatusEnum()
     expect(_.isFunction(stEnum.isConfirmed)).to.be.true
   })
 
-}
-
-  
 })
