@@ -129,6 +129,11 @@ WalletEngine.prototype.initialize = function (mnemonic, password, pin) {
   this.setPin(pin)
   store.set('cc-wallet-engine__mnemonic', mnemonic)
   store.set('cc-wallet-engine__encryptedpin', this.getPinEncrypted())
+  if (password === '') {
+      // if password is empty then seed is recoverable from mnemonic,
+      // thus we'll save seed in localStorage to avoid re-computing it
+      store.set('cc-wallet-engine__seed', this._seed)
+  }
 }
 
 /**
@@ -319,8 +324,20 @@ WalletEngine.prototype.resetSeed = function (password) {
     throw new errors.CannotResetSeedError()
   }
 
-  this.setSeed(this.stored_mnemonic(), password)
-  this.setPinEncrypted(this.stored_encryptedpin())
+  var stored_seed = store.get('cc-wallet-engine__seed');
+  if ((password === '') && stored_seed) {
+      this._seed = stored_seed;
+  } else {
+      this.setSeed(this.stored_mnemonic(), password)
+  }
+
+  // this code is used only to upgrade legacy wallets with
+  // no stored seed, can be removed later
+  if ((password === '') && !stored_seed) {
+    store.set('cc-wallet-engine__seed', this._seed)
+  }
+  
+  this.setPinEncrypted(this.stored_encryptedpin())  
 }
 
 /**
@@ -398,6 +415,7 @@ WalletEngine.prototype.clearStorage = function () {
   this._wallet.clearStorage()
   store.remove('cc-wallet-engine__mnemonic')
   store.remove('cc-wallet-engine__encryptedpin')
+  store.remove('cc-wallet-engine__seed')
   this._wallet.removeListeners()
   if (this.isInitialized()) { this._assetModels.removeListeners() }
   this._createWallet()
