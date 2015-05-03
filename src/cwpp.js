@@ -77,7 +77,7 @@ exports.processURL = function (uri) {
  * @param {string} uri
  * @return {?string}
  */
-exports.getURIHash = function getURIHash (uri) {
+exports.getURIHash = function getURIHash(uri) {
   if (!exports.is_cwpp_uri(uri)) { return null }
   var result = (new RegExp('/cwpp/(.+)$')).exec(uri)
   if (result) {
@@ -88,5 +88,5 @@ exports.getURIHash = function getURIHash (uri) {
 }
 
 exports.hashMessage = function (body) {
-  return SHA256(stringify(body)).toString();  
+  return SHA256(stringify(body)).toString();
 }
