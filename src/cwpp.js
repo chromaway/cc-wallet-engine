@@ -1,5 +1,6 @@
 var stringify = require('json-stable-stringify');
 var SHA256 = require('crypto-js/sha256');
+var URLSafeBase64 = require('urlsafe-base64');
 
 /**
  */
@@ -87,6 +88,12 @@ exports.getURIHash = function getURIHash(uri) {
   }
 }
 
-exports.hashMessage = function (body) {
+exports.hashMessage_long = function (body) {
   return SHA256(stringify(body)).toString();
+}
+
+exports.hashMessage_short = function (body) {
+  var sha256hex = SHA256(stringify(body)).toString();
+  var slice = (new Buffer(sha256hex, 'hex')).slice(0, 20);
+  return URLSafeBase64.encode(slice);
 }
