@@ -53,13 +53,13 @@ CWPPPaymentModel.prototype.initialize = function (cb) {
       throw new errors.RequestError('CWPPPaymentModel: ' + response.statusMessage)
     }
 
-    if (!cwpp.hashMessage(body) === cwpp.getURIHash(self.paymentURI)) {
+    if (cwpp.hashMessage(body) !== cwpp.getURIHash(self.paymentURI)) {
       throw new errors.PaymentError('PaymentRequest hash mismatch')
     }
 
     self.payreq = body
 
-    if (self.payreq.acceptedMethods['cinputs'] !== true) {
+    if (self.payreq.acceptedMethods.cinputs !== true) {
       throw new errors.PaymentError('incompatible payment method. upgrade required?')
     }
 
@@ -163,7 +163,6 @@ CWPPPaymentModel.prototype._checkRawTx = function (rawTx, cinputs, change, color
 
   }).then(function () {
     // check outputs
-    var assetdef = self.assetModel.getAssetDefinition()
     var fromBase58Check = cclib.bitcoin.Address.fromBase58Check
 
     var value = self.payreq.value
