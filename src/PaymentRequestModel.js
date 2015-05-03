@@ -75,7 +75,7 @@ PaymentRequestModel.prototype.getPaymentURI = function (cb) {
         throw new errors.RequestError('PaymentRequestModel: ' + response.statusMessage)
       }
       if (body.hash !== cwpp.hashMessage(self.cwppPayReq)) {
-        throw new erorrs.RequestError("PaymentRequest hash doesn't match")
+        throw new errors.RequestError('PaymentRequest hash doesn\'t match')
       }
 
       return cwpp.make_cwpp_uri(self.props.cwpp_host, body.hash)

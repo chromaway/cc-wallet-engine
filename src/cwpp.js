@@ -79,7 +79,7 @@ exports.processURL = function (uri) {
  */
 exports.getURIHash = function getURIHash (uri) {
   if (!exports.is_cwpp_uri(uri)) { return null }
-  var result = (new RegExp("/cwpp/(.+)$")).exec(uri)
+  var result = (new RegExp('/cwpp/(.+)$')).exec(uri)
   if (result) {
     return result[1]
   } else {
