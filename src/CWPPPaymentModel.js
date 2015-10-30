@@ -68,6 +68,7 @@ CWPPPaymentModel.prototype.initialize = function (cb) {
 
     var assetId = self.payreq.assetId
     self.assetModel = self.walletEngine.getAssetModelById(assetId)
+    self.sourceAssetModel = self.assetModel // use the same source
     if (!self.assetModel) {
       throw new errors.AssetNotRecognizedError('CWPPPaymentModel.initialize')
     }
@@ -91,6 +92,15 @@ CWPPPaymentModel.prototype.addRecipient = function () {
   throw new errors.NotImplementedError('CWPPPaymentModel.addRecipient')
 }
 
+CWPPPaymentModel.prototype.setSourceAsset = function (am) {
+  this.sourceAssetModel = am
+}
+
+function getColorDef(am) {
+  var ad = am.getAssetDefinition()
+  return ad.getColorSet().getColorDefinitions()[0]
+}
+
 /**
  * @callback CWPPPaymentModel~selectCoinsCallback
  * @param {?Error} error
@@ -105,8 +115,8 @@ CWPPPaymentModel.prototype.addRecipient = function () {
 CWPPPaymentModel.prototype.selectCoins = function (cb) {
   var self = this
 
-  var assetdef = self.assetModel.getAssetDefinition()
-  var colordef = assetdef.getColorSet().getColorDefinitions()[0]
+  var assetdef = self.sourceAssetModel.getAssetDefinition()
+  var colordef = getColorDef(self.sourceAssetModel)
   var neededColorValue = new cclib.ColorValue(colordef, self.payreq.value)
 
   var opTx = new OperationalTx(self.walletEngine.getWallet())
@@ -253,16 +263,17 @@ CWPPPaymentModel.prototype.send = function (cb) {
   }
 
   var wallet = self.walletEngine.getWallet()
+  var out_colordef = getColorDef(self.assetModel)
   console.log('CWPP: selectCoins')
-  Q.ninvoke(self, 'selectCoins').spread(function (cinputs, change, colordef) {
+  Q.ninvoke(self, 'selectCoins').spread(function (cinputs, change, in_colordef) {
     // service build transaction
     console.log('CWPP: sending inputs')
-    var msg = cwpp.make_cinputs_proc_req_1(colordef.getDesc(), cinputs, change)
+    var msg = cwpp.make_cinputs_proc_req_1(in_colordef.getDesc(), cinputs, change)
     return cwppProcess(msg).then(function (response) {
       console.log('CWPP: check tx')
-      var rawTx = RawTx.fromHex(response.tx_data)
-      // check inputs and outputs
-      return self._checkRawTx(rawTx, cinputs, change, colordef).then(function () {
+      var rawTx = RawTx.fromHex(response.tx_data)      
+      // check inputs and outputs      
+      return self._checkRawTx(rawTx, cinputs, change, out_colordef).then(function () {
         return rawTx
       })
 
