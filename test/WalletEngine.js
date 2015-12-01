@@ -4,15 +4,15 @@ var Q = require('q')
 var AssetModel = require('../src/AssetModel')
 var WalletEngine = require('../src/WalletEngine')
 
-
 describe('WalletEngine', function () {
+  this.timeout(30 * 1000)
+
   var walletEngine
 
   beforeEach(function () {
-    localStorage.clear()
+    global.localStorage.clear()
     walletEngine = new WalletEngine({
       testnet: true,
-      networks: [{name: 'ElectrumJS', args: [{testnet: true}]}],
       blockchain: {name: 'Naive'},
       spendUnconfirmedCoins: true
     })
@@ -41,26 +41,25 @@ describe('WalletEngine', function () {
     expect(walletEngine.isInitialized()).to.be.true
   })
 
-  it('getAssetModels', function (done) {
-    var deferred = Q.defer()
-    deferred.promise.done(done, done)
+  it('getAssetModels', function () {
+    return new Q.Promise(function (resolve, reject) {
+      var mnemonic = walletEngine.generateMnemonic()
+      var password = 'qwerty'
+      walletEngine.initialize(mnemonic, password, '1234')
 
-    walletEngine.setCallback(function () {
-      if (deferred.promise.isFulfilled()) {
-        return
-      }
-
-      walletEngine.getAssetModels().forEach(function (assetModel) {
-        expect(assetModel).to.be.instanceof(AssetModel)
+      walletEngine.setCallback(function () {
+        try {
+          walletEngine.getAssetModels().forEach(function (assetModel) {
+            expect(assetModel).to.be.instanceof(AssetModel)
+          })
+          resolve()
+        } catch (err) {
+          reject(err)
+        } finally {
+          walletEngine.setCallback(function () {})
+        }
       })
-      walletEngine.setCallback(function () {})
-
-      deferred.resolve()
     })
-
-    var mnemonic = walletEngine.generateMnemonic()
-    var password = 'qwerty'
-    walletEngine.initialize(mnemonic, password, '1234')
   })
 
   it('re-initialize', function () {

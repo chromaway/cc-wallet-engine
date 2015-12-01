@@ -2,7 +2,7 @@
  * @class HistoryTargetModel
  * @param {external:cc-wallet-core.HistoryTarget} historyTarget
  */
-function HistoryTargetModel(historyTarget) {
+function HistoryTargetModel (historyTarget) {
   var asset = historyTarget.getAsset()
   var value = historyTarget.getValue()
   this.address = historyTarget.getAddresses()[0]
@@ -30,6 +30,5 @@ HistoryTargetModel.prototype.getAssetMoniker = function () {
 HistoryTargetModel.prototype.getFormattedValue = function () {
   return this.formattedValue
 }
-
 
 module.exports = HistoryTargetModel

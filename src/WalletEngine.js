@@ -1,11 +1,10 @@
 var events = require('events')
 var util = require('util')
-
 var BIP39 = require('bip39')
-var ccWallet = require('cc-wallet-core').Wallet
+var CCWallet = require('cc-wallet-core').Wallet
 var CryptoJS = require('crypto-js')
 var store = require('store')
-var cccoreUtil = require('cc-wallet-core').util
+var SyncMixin = require('sync-mixin')
 
 var AssetModels = require('./AssetModels')
 var JsonFormatter = require('./JsonFormatter')
@@ -34,28 +33,28 @@ var _ = require('lodash')
 
 /**
  * @class WalletEngine
- * @extends external:events.EventEmitter
- * @mixins external:cc-wallet-core.util.SyncMixin
+ * @extends events.EventEmitter
+ * @mixins SyncMixin
  * @param {Object} [opts] See opts in cc-wallet-core.Wallet
  */
-function WalletEngine(opts) {
-  var self = this
-  events.EventEmitter.call(self)
-  self.setMaxListeners(100) // 10 by default, 0 -- unlimited
-  cccoreUtil.SyncMixin.call(self)
-  self._opts = opts
-  self.setCallback(function () {})
-  self._createWallet()
+function WalletEngine (opts) {
+  events.EventEmitter.call(this)
+
+  this.setMaxListeners(100) // 10 by default, 0 -- unlimited
+  this._opts = opts
+  this.setCallback(function () {})
+  this._createWallet()
 }
 
 util.inherits(WalletEngine, events.EventEmitter)
+_.assign(WalletEngine.prototype, SyncMixin)
 
 WalletEngine.prototype._createWallet = function () {
   var self = this
   self._assetModels = null
   self._historyEntries = []
 
-  self._wallet = new ccWallet(self._opts)
+  self._wallet = new CCWallet(self._opts)
   self._wallet.on('error', function (error) { self.emit('error', error) })
   self._wallet.on('syncStart', function () { self._syncEnter() })
   self._wallet.on('syncStop', function () { self._syncExit() })
@@ -95,7 +94,7 @@ WalletEngine.prototype.getWallet = function () {
  */
 WalletEngine.prototype.setCallback = function (callback) {
   this._updateCallback = callback
-  this._delayedUpdateCallback = cccoreUtil.debounce(callback, 100)
+  this._delayedUpdateCallback = _.debounce(callback, 100)
 }
 
 /**
@@ -130,9 +129,9 @@ WalletEngine.prototype.initialize = function (mnemonic, password, pin) {
   store.set('cc-wallet-engine__mnemonic', mnemonic)
   store.set('cc-wallet-engine__encryptedpin', this.getPinEncrypted())
   if (password === '') {
-      // if password is empty then seed is recoverable from mnemonic,
-      // thus we'll save seed in localStorage to avoid re-computing it
-      store.set('cc-wallet-engine__seed', this._seed)
+    // if password is empty then seed is recoverable from mnemonic,
+    // thus we'll save seed in localStorage to avoid re-computing it
+    store.set('cc-wallet-engine__seed', this._seed)
   }
 }
 
@@ -147,12 +146,17 @@ WalletEngine.prototype._initializeWalletEngine = function () {
   self._assetModels.on('syncStart', function () { self._syncEnter() })
   self._assetModels.on('syncStop', function () { self._syncExit() })
 
-  function updateHistory() {
+  function updateHistory () {
     var entries = self._wallet.getHistory()
 
-    function entryEqualFn(entry, index) { return entry.getHistoryEntry().isEqual(entries[index]) }
+    function entryEqualFn (entry, index) {
+      return entry.getHistoryEntry().isEqual(entries[index])
+    }
+
     var isEqual = self._historyEntries.length === entries.length && self._historyEntries.every(entryEqualFn)
-    if (isEqual) { return }
+    if (isEqual) {
+      return
+    }
 
     self._historyEntries = entries.map(function (entry) {
       return new HistoryEntryModel(entry)
@@ -162,7 +166,9 @@ WalletEngine.prototype._initializeWalletEngine = function () {
   }
 
   var historyUpdateTrigger = true
-  self._wallet.on('historyUpdate', function () { historyUpdateTrigger = true })
+  self._wallet.on('historyUpdate', function () {
+    historyUpdateTrigger = true
+  })
   self._wallet.on('syncStop', function () {
     if (historyUpdateTrigger) {
       updateHistory()
@@ -185,7 +191,6 @@ WalletEngine.prototype.connect = function () {
 WalletEngine.prototype.disconnect = function () {
   this._wallet.disconnect()
 }
-
 
 /**
  * @return {string}
@@ -324,11 +329,11 @@ WalletEngine.prototype.resetSeed = function (password) {
     throw new errors.CannotResetSeedError()
   }
 
-  var stored_seed = store.get('cc-wallet-engine__seed');
+  var stored_seed = store.get('cc-wallet-engine__seed')
   if ((password === '') && stored_seed) {
-      this._seed = stored_seed;
+    this._seed = stored_seed
   } else {
-      this.setSeed(this.stored_mnemonic(), password)
+    this.setSeed(this.stored_mnemonic(), password)
   }
 
   // this code is used only to upgrade legacy wallets with
@@ -336,15 +341,17 @@ WalletEngine.prototype.resetSeed = function (password) {
   if ((password === '') && !stored_seed) {
     store.set('cc-wallet-engine__seed', this._seed)
   }
-  
-  this.setPinEncrypted(this.stored_encryptedpin())  
+
+  this.setPinEncrypted(this.stored_encryptedpin())
 }
 
 /**
  * @return {AssetModel[]}
  */
 WalletEngine.prototype.getAssetModels = function () {
-  if (!this._wallet.isInitialized()) { return [] }
+  if (!this._wallet.isInitialized()) {
+    return []
+  }
 
   return this._assetModels.getAssetModels()
 }
@@ -384,7 +391,9 @@ WalletEngine.prototype.makePaymentFromURI = function (uri, cb) {
       paymentModel.setSeed(self.getSeed())
     }
 
-    return paymentModel.initialize(function (error) { cb(error, paymentModel) })
+    return paymentModel.initialize(function (err) {
+      cb(err, paymentModel)
+    })
   }
 
   var asset = self._assetModels.getAssetForURI(uri)
@@ -392,12 +401,12 @@ WalletEngine.prototype.makePaymentFromURI = function (uri, cb) {
     return cb(new errors.AssetNotRecognizedError('WalletEngine.makePaymentFromURI'))
   }
 
-  asset.makePaymentFromURI(uri, function (error, paymentModel) {
-    if (error === null && self.hasSeed()) {
+  asset.makePaymentFromURI(uri, function (err, paymentModel) {
+    if (err === null && self.hasSeed()) {
       paymentModel.setSeed(self.getSeed())
     }
 
-    cb(error, paymentModel)
+    cb(err, paymentModel)
   })
 }
 
@@ -406,7 +415,9 @@ WalletEngine.prototype.makePaymentFromURI = function (uri, cb) {
 WalletEngine.prototype.removeListeners = function () {
   this.removeAllListeners()
   this._wallet.removeListeners()
-  if (this.isInitialized()) { this._assetModels.removeListeners() }
+  if (this.isInitialized()) {
+    this._assetModels.removeListeners()
+  }
 }
 
 /**
@@ -417,13 +428,14 @@ WalletEngine.prototype.clearStorage = function () {
   store.remove('cc-wallet-engine__encryptedpin')
   store.remove('cc-wallet-engine__seed')
   this._wallet.removeListeners()
-  if (this.isInitialized()) { this._assetModels.removeListeners() }
+  if (this.isInitialized()) {
+    this._assetModels.removeListeners()
+  }
   this._createWallet()
 }
 
-
 WalletEngine.prototype._getSyncingStatus = function () {
-  var w = this.getWallet();
+  var w = this.getWallet()
   var syncingObjects = {
     WalletEngine: this,
     Wallet: w,

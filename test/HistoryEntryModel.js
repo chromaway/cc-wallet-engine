@@ -5,16 +5,16 @@ var moment = require('moment')
 var WalletEngine = require('../src/WalletEngine')
 var HistoryEntryModel = require('../src/HistoryEntryModel')
 
-
 describe('HistoryEntryModel', function () {
+  this.timeout(30 * 1000)
+
   var wallet
   var historyEntry
 
   beforeEach(function (done) {
-    localStorage.clear()
+    global.localStorage.clear()
     wallet = new WalletEngine({
       testnet: true,
-      networks: [{name: 'ElectrumJS', args: [{testnet: true}]}],
       blockchain: {name: 'Naive'},
       spendUnconfirmedCoins: true
     })
@@ -24,12 +24,15 @@ describe('HistoryEntryModel', function () {
     wallet.on('historyUpdate', function () { console.log('historyUpdate') })
 
     wallet.once('syncStop', function () {
-      var entries = wallet.getWallet().getHistory()
+      try {
+        var entries = wallet.getWallet().getHistory()
+        expect(entries).to.be.instanceof(Array).with.to.have.length(1)
+        historyEntry = new HistoryEntryModel(entries[0])
 
-      expect(entries).to.be.instanceof(Array).with.to.have.length(1)
-      historyEntry = new HistoryEntryModel(entries[0])
-
-      done()
+        done()
+      } catch (err) {
+        done(err)
+      }
     })
   })
 
@@ -90,5 +93,4 @@ describe('HistoryEntryModel', function () {
     var stEnum = historyEntry.getTxStatusEnum()
     expect(_.isFunction(stEnum.isConfirmed)).to.be.true
   })
-
 })

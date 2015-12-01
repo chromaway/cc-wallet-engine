@@ -2,7 +2,6 @@ var _ = require('lodash')
 var errors = require('cc-wallet-core').errors
 var createError = errors.createError || require('errno').create
 
-
 /**
  * Error
  *  +-- ColoredCoinError
@@ -21,30 +20,29 @@ var createError = errors.createError || require('errno').create
  */
 
 /**
- * @member {Object} external:cc-wallet-core.errors
+ * @member {Object} cccore.errors
  */
 
 /**
- * @member {function} external:cc-wallet-core.errors.ColoredCoinError
+ * @member {function} cccore.errors.ColoredCoin
  */
-var ColoredCoinError = errors.ColoredCoinError
-
+var ColoredCoinError = errors.ColoredCoin
 
 /**
  * @class AssetNotRecognizedError
- * @extends {external:cc-wallet-core.errors.ColoredCoinError}
+ * @extends {cccore.errors.ColoredCoin}
  */
 var AssetNotRecognizedError = createError('AssetNotRecognizedError', ColoredCoinError)
 
 /**
  * @class MnemonicIsUndefinedError
- * @extends {external:cc-wallet-core.errors.ColoredCoinError}
+ * @extends {cccore.errors.ColoredCoin}
  */
 var MnemonicIsUndefinedError = createError('MnemonicIsUndefinedError', ColoredCoinError)
 
 /**
  * @class PaymentError
- * @extends {external:cc-wallet-core.errors.ColoredCoinError}
+ * @extends {cccore.errors.ColoredCoin}
  */
 var PaymentError = createError('PaymentError', ColoredCoinError)
 
@@ -74,13 +72,13 @@ var PaymentWasNotProperlyInitializedError = createError('PaymentWasNotProperlyIn
 
 /**
  * @class RequestError
- * @extends {external:cc-wallet-core.errors.ColoredCoinError}
+ * @extends {cccore.errors.ColoredCoinError}
  */
 var RequestError = createError('RequestError', ColoredCoinError)
 
 /**
  * @class SeedError
- * @extends {external:cc-wallet-core.errors.ColoredCoinError}
+ * @extends {cccore.errors.ColoredCoinError}
  */
 var SeedError = createError('SeedError', ColoredCoinError)
 
@@ -101,8 +99,6 @@ var SeedIsUndefinedError = createError('SeedIsUndefinedError', SeedError)
  * @extends {SeedError}
  */
 var WrongSeedError = createError('WrongSeedError', SeedError)
-
-
 
 module.exports = _.extend(errors, {
   AssetNotRecognizedError: AssetNotRecognizedError,

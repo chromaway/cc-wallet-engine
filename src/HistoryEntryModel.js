@@ -1,17 +1,15 @@
 var moment = require('moment')
 var HistoryTargetModel = require('./HistoryTargetModel')
-var TX_STATUS =  require('cc-wallet-core').const.TX_STATUS
+var TX_STATUS = require('cc-wallet-core').const.TX_STATUS
 var _ = require('lodash')
 
-
-var statusVsString = _.invert(_.pick(TX_STATUS, _.isNumber));
-
+var statusVsString = _.invert(_.pick(TX_STATUS, _.isNumber))
 
 /**
  * @class HistoryEntryModel
- * @param {external:cc-wallet-core.HistoryEntry} historyEntry
+ * @param {cccore.HistoryEntry} historyEntry
  */
-function HistoryEntryModel(historyEntry) {
+function HistoryEntryModel (historyEntry) {
   this.historyEntry = historyEntry
 }
 
@@ -30,7 +28,7 @@ HistoryEntryModel.prototype.getTxId = function () {
 }
 
 HistoryEntryModel.prototype.getTxStatus = function () {
-  var x = this.historyEntry.getTxStatus();
+  var x = this.historyEntry.getTxStatus()
   return {
     statusCode: x,
     statusString: statusVsString[x]
@@ -38,17 +36,16 @@ HistoryEntryModel.prototype.getTxStatus = function () {
 }
 
 HistoryEntryModel.prototype.getTxStatusEnum = function () {
-  return TX_STATUS;
+  return TX_STATUS
 }
-
 
 /**
  * @return {string}
  */
 HistoryEntryModel.prototype.getDate = function () {
   var timestamp = this.historyEntry.getTimestamp()
-  //Now all historyEntry have timestamp, even unconfirmed
-  //if (!timestamp) { return 'unconfirmed' }
+  // Now all historyEntry have timestamp, even unconfirmed
+  // if (!timestamp) { return 'unconfirmed' }
 
   var date = moment(timestamp * 1000).format('MM/DD/YY HH:mm:ss')
   return (this.historyEntry.isBlockTimestamp() ? '~' : '') + date
@@ -113,6 +110,5 @@ HistoryEntryModel.prototype.getTransactionType = function () {
     return 'Payment to yourself'
   }
 }
-
 
 module.exports = HistoryEntryModel

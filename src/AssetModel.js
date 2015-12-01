@@ -1,15 +1,13 @@
 var events = require('events')
 var util = require('util')
-
 var _ = require('lodash')
 var Q = require('q')
-var cccoreUtil = require('cc-wallet-core').util
+var SyncMixin = require('sync-mixin')
 
 var PaymentModel = require('./PaymentModel')
 var PaymentRequestModel = require('./PaymentRequestModel')
 var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
 var errors = require('./errors')
-
 
 /**
  * @event AssetModel#error
@@ -30,15 +28,14 @@ var errors = require('./errors')
 
 /**
  * @class AssetModel
- * @extends external:events.EventEmitter
- * @mixins external:cc-wallet-core.util.SyncMixin
+ * @extends events.EventEmitter
+ * @mixins SyncMixin
  * @param {WalletEngine} walletEngine
- * @param {external:cc-wallet-core.AssetDefinition} assetdef
+ * @param {cccore.AssetDefinition} assetdef
  */
-function AssetModel(walletEngine, assetdef) {
+function AssetModel (walletEngine, assetdef) {
   var self = this
   events.EventEmitter.call(self)
-  cccoreUtil.SyncMixin.call(self)
 
   self._wallet = walletEngine.getWallet()
   self._walletEngine = walletEngine
@@ -56,74 +53,84 @@ function AssetModel(walletEngine, assetdef) {
   }
 
   var updateState = {isUpdating: false, isStillNeedUpdate: false}
-  var update = cccoreUtil.debounce(function () {
+  var update = _.debounce(function () {
     if (updateState.isUpdating) {
-      return (updateState.isStillNeedUpdate = true)
+      updateState.isStillNeedUpdate = true
+      return
     }
 
-    function updateOnce() {
+    function updateOnce () {
       updateState.isUpdating = true
       updateState.isStillNeedUpdate = false
+      if (!self.isSyncing()) {
+        self._syncEnter()
+      }
 
-      self._update().finally(function () {
-        if (updateState.isStillNeedUpdate) {
-          return updateOnce()
-        }
+      self._update()
+        .finally(function () {
+          if (updateState.isStillNeedUpdate) {
+            return updateOnce()
+          }
 
-        updateState.isUpdating = false
-      })
+          updateState.isUpdating = false
+          self._syncExit()
+        })
     }
     updateOnce()
-
   }, 100)
 
   self._wallet.on('updateTx', function () { update() })
   self._wallet.on('touchAsset', function (assetdef) {
-    if (self._assetdef.getId() === assetdef.getId()) { update() }
+    if (self._assetdef.getId() === assetdef.getId()) {
+      update()
+    }
   })
 
   update()
 }
 
 util.inherits(AssetModel, events.EventEmitter)
+_.assign(AssetModel.prototype, SyncMixin)
 
 /**
- * @return {external:Q.Promise}
+ * @return {Q.Promise}
  */
 AssetModel.prototype._update = function () {
   var self = this
 
-  return Q.ninvoke(self._wallet, 'getBalance', self._assetdef).then(function (balance) {
-    var isChanged = false
-    function updateBalance(balanceType, value) {
-      var formattedValue = self._assetdef.formatValue(value)
-      if (self.props[balanceType] !== formattedValue) {
-        self.props[balanceType] = formattedValue
-        isChanged = true
+  return Q.ninvoke(self._wallet, 'getBalance', self._assetdef)
+    .then(function (balance) {
+      var isChanged = false
+
+      function updateBalance (balanceType, value) {
+        var formattedValue = self._assetdef.formatValue(value)
+        if (self.props[balanceType] !== formattedValue) {
+          self.props[balanceType] = formattedValue
+          isChanged = true
+        }
       }
-    }
 
-    updateBalance('totalBalance', balance.total)
-    updateBalance('availableBalance', balance.available)
-    updateBalance('unconfirmedBalance', balance.unconfirmed)
+      updateBalance('totalBalance', balance.total)
+      updateBalance('availableBalance', balance.available)
+      updateBalance('unconfirmedBalance', balance.unconfirmed)
 
-    if (isChanged) { self.emit('update') }
-
-  }).catch(function (error) {
-    self.emit('error', error)
-
-  })
+      if (isChanged) {
+        self.emit('update')
+      }
+    }).catch(function (error) {
+      self.emit('error', error)
+    })
 }
 
 /**
- * @return {external:cc-wallet-core.Wallet}
+ * @return {cccore.Wallet}
  */
 AssetModel.prototype.getWallet = function () {
   return this._wallet
 }
 
 /**
- * @return {external:cc-wallet-core.AssetDefinition}
+ * @return {cccore.AssetDefinition}
  */
 AssetModel.prototype.getAssetDefinition = function () {
   return this._assetdef
@@ -214,6 +221,5 @@ AssetModel.prototype.makePaymentFromURI = function (uri, cb) {
   payment.addRecipient(colorAddress, params.amount)
   cb(null, payment)
 }
-
 
 module.exports = AssetModel

@@ -3,15 +3,15 @@ var expect = require('chai').expect
 var WalletEngine = require('../src/WalletEngine')
 var AssetModel = require('../src/AssetModel')
 
-
 describe('AssetModel', function () {
+  this.timeout(30 * 1000)
+
   var walletEngine
 
   beforeEach(function () {
-    localStorage.clear()
+    global.localStorage.clear()
     walletEngine = new WalletEngine({
       testnet: true,
-      networks: [{name: 'ElectrumJS', args: [{testnet: true}]}],
       blockchain: {name: 'Naive'},
       spendUnconfirmedCoins: true
     })
@@ -34,15 +34,21 @@ describe('AssetModel', function () {
 
     var cnt = 0
     assetModel.on('update', function () {
-      if (++cnt !== 2) { return }
+      if (++cnt !== 2) {
+        return
+      }
 
-      expect(assetModel.getMoniker()).to.equal('bitcoin')
-      expect(assetModel.getAddress()).to.equal('mv4jLE114t8KHL3LExNGBTXiP2dCjkaWJh')
-      expect(assetModel.getUnconfirmedBalance()).to.equal('0.00000000')
-      expect(assetModel.getAvailableBalance()).to.equal('0.01000000')
-      expect(assetModel.getTotalBalance()).to.equal('0.01000000')
+      try {
+        expect(assetModel.getMoniker()).to.equal('bitcoin')
+        expect(assetModel.getAddress()).to.equal('mv4jLE114t8KHL3LExNGBTXiP2dCjkaWJh')
+        expect(assetModel.getUnconfirmedBalance()).to.equal('0.00000000')
+        expect(assetModel.getAvailableBalance()).to.equal('0.01000000')
+        expect(assetModel.getTotalBalance()).to.equal('0.01000000')
 
-      done()
+        done()
+      } catch (err) {
+        done(err)
+      }
     })
   })
 })

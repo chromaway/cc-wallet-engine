@@ -1,15 +1,16 @@
 var expect = require('chai').expect
 
 var BIP39 = require('bip39')
-var cccore = require('cc-wallet-core')
+var cclib = require('coloredcoinjs-lib')
 
 var WalletEngine = require('../src/WalletEngine')
 var cwpp = require('../src/cwpp')
 var CWPPPaymentModel = require('../src/CWPPPaymentModel')
 var errors = require('../src/errors')
 
-
 describe('CWPPPaymentModel', function () {
+  this.timeout(90 * 1000)
+
   var mnemonic = 'good fog frozen vote rate law scrap little tuition page olympic wagon'
   var password = ''
   var seed = BIP39.mnemonicToSeedHex(mnemonic, password)
@@ -23,10 +24,11 @@ describe('CWPPPaymentModel', function () {
   var paymentModel
 
   before(function (done) {
-    localStorage.clear()
+    this.timeout(240 * 1000)
+
+    global.localStorage.clear()
     walletEngine = new WalletEngine({
       testnet: true,
-      networks: [{name: 'ElectrumJS', args: [{testnet: true}]}],
       blockchain: {name: 'Naive'},
       spendUnconfirmedCoins: true
     })
@@ -40,7 +42,7 @@ describe('CWPPPaymentModel', function () {
       return am.getMoniker() === goldAsset.monikers[0]
     })[0]
     var paymentOpts = {
-      // cwpp_host: 'localhost:4242',
+      cwpp_host: 'devel.hz.udoidio.info:4242',
       amount: '1',
       address: 'mr7NzJFwZ978iqmv3GaAWbCpYhaiLWf2JP'
     }
@@ -50,9 +52,13 @@ describe('CWPPPaymentModel', function () {
 
       paymentModel = new CWPPPaymentModel(walletEngine, uri)
       paymentModel.setSeed(seed)
-      paymentModel.initialize(function (error) {
-        expect(error).to.be.null
-        done()
+      paymentModel.initialize(function (err) {
+        try {
+          expect(err).to.be.null
+          done()
+        } catch (err) {
+          done(err)
+        }
       })
     })
   })
@@ -61,7 +67,7 @@ describe('CWPPPaymentModel', function () {
     walletEngine.getWallet().getConnector().disconnect()
     walletEngine.removeListeners()
     walletEngine = null
-    localStorage.clear()
+    global.localStorage.clear()
   })
 
   afterEach(function () {
@@ -73,26 +79,36 @@ describe('CWPPPaymentModel', function () {
   })
 
   it('selectCoins', function (done) {
-    paymentModel.selectCoins(function (error, cinputs, change, colordef) {
-      expect(error).to.be.null
-      expect(cinputs).to.be.an('array')
-      cinputs.forEach(function (cinput) {
-        cccore.verify.txId(cinput.txId)
-        cccore.verify.number(cinput.outIndex)
-        cccore.verify.number(cinput.value)
-        cccore.verify.hexString(cinput.script)
-      })
-      expect(change).to.have.property('address').and.to.be.a('string')
-      expect(change).to.have.property('value').and.to.be.a('number')
-      expect(colordef).to.be.instanceof(cccore.cclib.ColorDefinition)
-      done()
+    paymentModel.selectCoins(function (err, cinputs, change, colordef) {
+      try {
+        expect(err).to.be.null
+        expect(cinputs).to.be.an('array')
+        cinputs.forEach(function (cinput) {
+          expect(cinput.txId).to.match(/[0-9a-z]{64}/)
+          expect(cinput.outIndex).to.be.a('number')
+          expect(cinput.value).to.be.a('number')
+          expect(cinput.script).to.match(/[0-9a-z]/)
+        })
+        expect(change).to.have.property('address').and.to.be.a('string')
+        expect(change).to.have.property('value').and.to.be.a('number')
+        expect(colordef).to.be.instanceof(cclib.definitions.Interface)
+
+        done()
+      } catch (err) {
+        done(err)
+      }
     })
   })
 
   it('send', function (done) {
-    paymentModel.send(function (error) {
-      expect(error).to.be.null
-      done()
+    paymentModel.send(function (err) {
+      try {
+        console.log('CWPPPaymentModel.send err:', err && err.stack || err)
+        expect(err).to.be.null
+        done()
+      } catch (err) {
+        done(err)
+      }
     })
   })
 })

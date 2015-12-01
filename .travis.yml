@@ -1,10 +1,33 @@
+sudo: false
+os: linux
 language: node_js
-before_install:
-  - npm install -g grunt-cli
 node_js:
-  - "0.10"
+  - "0.12"
+  - "4"
+  - "5"
+addons:
+  firefox: latest
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-4.8
+install:
+  - npm install
+before_script:
+  - sh -e /etc/init.d/xvfb start
 env:
-  - TEST_SUITE=compile
-  - TEST_SUITE=coveralls
-  - TEST_SUITE=lint
-script: "grunt $TEST_SUITE"
+  global:
+    - CXX=g++-4.8
+    - DISPLAY=:99.0
+  matrix:
+    - TEST_SUITE=test
+matrix:
+  include:
+    - os: linux
+      node_js: "4"
+      env: TEST_SUITE=coverage
+    - os: linux
+      node_js: "4"
+      env: TEST_SUITE=lint
+script: npm run $TEST_SUITE

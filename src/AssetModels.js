@@ -1,12 +1,10 @@
 var events = require('events')
 var util = require('util')
-
 var _ = require('lodash')
-var SyncMixin = require('cc-wallet-core').util.SyncMixin
+var SyncMixin = require('sync-mixin')
 
 var AssetModel = require('./AssetModel')
 var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
-
 
 /**
  * @event AssetModels#error
@@ -27,32 +25,33 @@ var decode_bitcoin_uri = require('./uri_decoder').decode_bitcoin_uri
 
 /**
  * @class AssetModels
- * @extends external:events.EventEmitter
- * @mixins external:cc-wallet-core.util.SyncMixin
+ * @extends events.EventEmitter
+ * @mixins SyncMixin
  * @param {walletEngine} walletEngine
  */
-function AssetModels(walletEngine) {
-  var self = this
-  events.EventEmitter.call(self)
-  SyncMixin.call(self)
+function AssetModels (walletEngine) {
+  events.EventEmitter.call(this)
 
-  self._models = {}
-  self._walletEngine = walletEngine
+  this._models = {}
+  this._walletEngine = walletEngine
 
-  walletEngine.getWallet().getAllAssetDefinitions().forEach(self._addAssetModel.bind(self))
-  walletEngine.getWallet().on('newAsset', self._addAssetModel.bind(self))
+  walletEngine.getWallet().getAllAssetDefinitions().forEach(this._addAssetModel.bind(this))
+  walletEngine.getWallet().on('newAsset', this._addAssetModel.bind(this))
 }
 
 util.inherits(AssetModels, events.EventEmitter)
+_.assign(AssetModels.prototype, SyncMixin)
 
 /**
- * @param {external:cc-wallet-core.AssetDefinition} assetdef
+ * @param {cccore.AssetDefinition} assetdef
  */
 AssetModels.prototype._addAssetModel = function (assetdef) {
   var self = this
 
   var assetId = assetdef.getId()
-  if (!_.isUndefined(self._models[assetId])) { return }
+  if (!_.isUndefined(self._models[assetId])) {
+    return
+  }
 
   var assetModel = new AssetModel(self._walletEngine, assetdef)
   assetModel.on('error', function (error) { self.emit('error', error) })
@@ -78,7 +77,9 @@ AssetModels.prototype.getAssetModels = function () {
  */
 AssetModels.prototype.getAssetForURI = function (uri) {
   var params = decode_bitcoin_uri(uri)
-  if (params === null || _.isUndefined(params.address)) { return null }
+  if (params === null || params.address === undefined) {
+    return null
+  }
 
   // by default assetId for bitcoin
   var assetId = _.isUndefined(params.asset_id) ? 'JNu4AFCBNmTE1' : params.asset_id
@@ -97,8 +98,9 @@ AssetModels.prototype.getAssetById = function (assetId) {
  */
 AssetModels.prototype.removeListeners = function () {
   this.removeAllListeners()
-  this.getAssetModels().forEach(function (am) { am.removeAllListeners() })
+  this.getAssetModels().forEach(function (am) {
+    am.removeAllListeners()
+  })
 }
-
 
 module.exports = AssetModels

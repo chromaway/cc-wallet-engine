@@ -1,7 +1,5 @@
 var Q = require('q')
-
 var errors = require('./errors')
-
 
 /**
  * @typedef {Object} PaymentModel~RecipientObject
@@ -13,7 +11,7 @@ var errors = require('./errors')
  * @class PaymentModel
  * @param {AssetModel} assetModel
  */
-function PaymentModel(assetModel, seed) {
+function PaymentModel (assetModel, seed) {
   this.assetModel = assetModel
   this.readOnly = false
   this.status = null
@@ -55,7 +53,6 @@ PaymentModel.prototype.getTotalAmount = function () {
 PaymentModel.prototype.getRecipients = function () {
   return this.recipients
 }
-
 
 /**
  * @param {string} address
@@ -119,7 +116,7 @@ PaymentModel.prototype.send = function (cb) {
     return cb(new errors.ZeroArrayLengthError('PaymentModel.send: recipients list is empty'))
   }
 
-  if (self.seed === null) {
+  if (self.seed === null || self.seed === undefined) {
     return cb(new errors.MnemonicIsUndefinedError('PaymentModel.send'))
   }
 
@@ -136,21 +133,20 @@ PaymentModel.prototype.send = function (cb) {
   self.status = 'sending'
 
   var wallet = self.assetModel.getWallet()
-  Q.ninvoke(wallet, 'createTx', self.assetModel.getAssetDefinition(), rawTargets).then(function (tx) {
+  Q.ninvoke(wallet, 'createTx', self.assetModel.getAssetDefinition(), rawTargets)
+  .then(function (tx) {
     return Q.ninvoke(wallet, 'transformTx', tx, 'signed', {seedHex: self.seed})
-
-  }).then(function (tx) {
-    self.txId = tx.getId()
+  })
+  .then(function (tx) {
+    self.txId = tx.id
     return Q.ninvoke(wallet, 'sendTx', tx)
-
-  }).done(function () {
+  })
+  .then(function () {
     self.status = 'send'
     cb(null, self.txId)
-
   }, function (error) {
     self.status = 'failed'
     cb(error)
-
   })
 }
 
@@ -160,10 +156,11 @@ PaymentModel.prototype.send = function (cb) {
  * @return {string}
  */
 PaymentModel.prototype.getStatus = function () {
-  if (!this.readOnly) { return 'fresh' }
+  if (!this.readOnly) {
+    return 'fresh'
+  }
 
   return this.status
 }
-
 
 module.exports = PaymentModel

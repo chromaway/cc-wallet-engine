@@ -1,6 +1,6 @@
-var stringify = require('json-stable-stringify');
-var SHA256 = require('crypto-js/sha256');
-var URLSafeBase64 = require('urlsafe-base64');
+var stringify = require('json-stable-stringify')
+var SHA256 = require('crypto-js/sha256')
+var URLSafeBase64 = require('urlsafe-base64')
 
 /**
  */
@@ -43,7 +43,7 @@ exports.make_cinputs_proc_req_2 = function (tx) {
 }
 
 exports.make_cwpp_uri = function (host, hash) {
-  return 'cwpp:http://' + host + '/cwpp/' + hash;
+  return 'cwpp:http://' + host + '/cwpp/' + hash
 }
 
 /**
@@ -59,7 +59,9 @@ exports.is_cwpp_uri = function (uri) {
  * @return {?string}
  */
 exports.requestURL = function (uri) {
-  if (!exports.is_cwpp_uri(uri)) { return null }
+  if (!exports.is_cwpp_uri(uri)) {
+    return null
+  }
 
   return uri.slice(5)
 }
@@ -69,7 +71,9 @@ exports.requestURL = function (uri) {
  * @return {?string}
  */
 exports.processURL = function (uri) {
-  if (!exports.is_cwpp_uri(uri)) { return null }
+  if (!exports.is_cwpp_uri(uri)) {
+    return null
+  }
 
   return exports.requestURL(uri).replace('/cwpp/', '/cwpp/process/')
 }
@@ -78,8 +82,11 @@ exports.processURL = function (uri) {
  * @param {string} uri
  * @return {?string}
  */
-exports.getURIHash = function getURIHash(uri) {
-  if (!exports.is_cwpp_uri(uri)) { return null }
+exports.getURIHash = function getURIHash (uri) {
+  if (!exports.is_cwpp_uri(uri)) {
+    return null
+  }
+
   var result = (new RegExp('/cwpp/(.+)$')).exec(uri)
   if (result) {
     return result[1]
@@ -89,11 +96,11 @@ exports.getURIHash = function getURIHash(uri) {
 }
 
 exports.hashMessage_long = function (body) {
-  return SHA256(stringify(body)).toString();
+  return SHA256(stringify(body)).toString()
 }
 
 exports.hashMessage_short = function (body) {
-  var sha256hex = SHA256(stringify(body)).toString();
-  var slice = (new Buffer(sha256hex, 'hex')).slice(0, 20);
-  return URLSafeBase64.encode(slice);
+  var sha256hex = SHA256(stringify(body)).toString()
+  var slice = (new Buffer(sha256hex, 'hex')).slice(0, 20)
+  return URLSafeBase64.encode(slice)
 }
