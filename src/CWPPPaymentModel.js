@@ -49,7 +49,7 @@ CWPPPaymentModel.prototype.initialize = function (cb) {
   Q.nfcall(request, requestOpts)
     .spread(function (response, body) {
       if (response.statusCode !== 200) {
-        throw new errors.RequestError('CWPPPaymentModel: ' + response.statusMessage)
+          throw new errors.RequestError('CWPPPaymentModel: ' + response.statusText)
       }
 
       var cwppURIHash = cwpp.getURIHash(self.paymentURI)

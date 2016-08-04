@@ -126,6 +126,7 @@ WalletEngine.prototype.initialize = function (mnemonic, password, pin) {
   this._wallet.initialize(this.getSeed())
   this._initializeWalletEngine()
   this.setPin(pin)
+  this.setAskPinAmount(0)
   store.set('cc-wallet-engine__mnemonic', mnemonic)
   store.set('cc-wallet-engine__encryptedpin', this.getPinEncrypted())
   if (password === '') {
@@ -255,6 +256,20 @@ WalletEngine.prototype.setPinEncrypted = function (encryptedPin) {
  */
 WalletEngine.prototype.setPin = function (pin) {
   this._pin = pin
+}
+
+/**
+ * @return {int}
+ */
+WalletEngine.prototype.getAskPinAmount = function () {
+    return (this._askPinAmount != undefined) ? this._askPinAmount : 0;
+}
+
+/**
+ * @param {int} amount
+ */
+WalletEngine.prototype.setAskPinAmount = function (amount) {
+    this._askPinAmount = amount
 }
 
 /**
