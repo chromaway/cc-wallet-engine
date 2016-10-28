@@ -37,12 +37,12 @@ var _ = require('lodash')
  * @mixins SyncMixin
  * @param {Object} [opts] See opts in cc-wallet-core.Wallet
  */
-function WalletEngine (opts) {
+function WalletEngine(opts) {
   events.EventEmitter.call(this)
 
   this.setMaxListeners(100) // 10 by default, 0 -- unlimited
   this._opts = opts
-  this.setCallback(function () {})
+  this.setCallback(function () { })
   this._createWallet()
 }
 
@@ -103,7 +103,7 @@ WalletEngine.prototype._update = function () {
   // callback is called automatically on syncStop,
   // so we only call callback when not syncing
   if (!this.isSyncing()) {
-    this._delayedUpdateCallback()
+      this._delayedUpdateCallback()
   }
 }
 
@@ -134,6 +134,9 @@ WalletEngine.prototype.initialize = function (mnemonic, password, pin) {
     // thus we'll save seed in localStorage to avoid re-computing it
     store.set('cc-wallet-engine__seed', this._seed)
   }
+  store.set('cc-wallet-engine__askpinamount', this.getAskPinAmount().toString())
+  store.set('cc-wallet-engine__nickname', this.getNickname())
+  store.set('cc-wallet-engine__sendnotifications', this.getSendNotifications())
 }
 
 /**
@@ -147,10 +150,10 @@ WalletEngine.prototype._initializeWalletEngine = function () {
   self._assetModels.on('syncStart', function () { self._syncEnter() })
   self._assetModels.on('syncStop', function () { self._syncExit() })
 
-  function updateHistory () {
+  function updateHistory() {
     var entries = self._wallet.getHistory()
 
-    function entryEqualFn (entry, index) {
+    function entryEqualFn(entry, index) {
       return entry.getHistoryEntry().isEqual(entries[index])
     }
 
@@ -233,7 +236,7 @@ WalletEngine.prototype.getPinEncrypted = function () {
   this.seedCheck()
 
   var encrypted = CryptoJS.AES.encrypt(
-    this._pin, this.getSeed(), {format: JsonFormatter})
+    this._pin, this.getSeed(), { format: JsonFormatter })
 
   return encrypted.toString()
 }
@@ -246,7 +249,7 @@ WalletEngine.prototype.setPinEncrypted = function (encryptedPin) {
   this.seedCheck()
 
   var decrypted = CryptoJS.AES.decrypt(
-    encryptedPin, this.getSeed(), {format: JsonFormatter})
+    encryptedPin, this.getSeed(), { format: JsonFormatter })
 
   this._pin = decrypted.toString(CryptoJS.enc.Utf8)
 }
@@ -256,20 +259,56 @@ WalletEngine.prototype.setPinEncrypted = function (encryptedPin) {
  */
 WalletEngine.prototype.setPin = function (pin) {
   this._pin = pin
+
+  store.set('cc-wallet-engine__encryptedpin', this.getPinEncrypted())
 }
 
 /**
  * @return {int}
  */
 WalletEngine.prototype.getAskPinAmount = function () {
-    return (this._askPinAmount != undefined) ? this._askPinAmount : 0;
+  return (this._askPinAmount != undefined) ? this._askPinAmount : 0
 }
 
 /**
  * @param {int} amount
  */
 WalletEngine.prototype.setAskPinAmount = function (amount) {
-    this._askPinAmount = amount
+  this._askPinAmount = amount
+
+  store.set('cc-wallet-engine__askpinamount', this.getAskPinAmount().toString())
+}
+
+/**
+ * @return {string}
+ */
+WalletEngine.prototype.getNickname = function () {
+  return (this._nickname) ? this._nickname : ""
+}
+
+/**
+ * @param {string} nickname
+ */
+WalletEngine.prototype.setNickname = function (nickname) {
+  this._nickname = nickname
+
+  store.set('cc-wallet-engine__nickname', this.getNickname())
+}
+
+/**
+ * @return {boolean}
+ */
+WalletEngine.prototype.getSendNotifications = function () {
+  return (this._sendNotifications == true) ? true : false
+}
+
+/**
+ * @param {boolean} sendNotifications
+ */
+WalletEngine.prototype.setSendNotifications = function (sendNotifications) {
+  this._sendNotifications = sendNotifications
+
+  store.set('cc-wallet-engine__sendnotifications', this.getSendNotifications())
 }
 
 /**
@@ -307,6 +346,14 @@ WalletEngine.prototype.setSeed = function (mnemonic, password) {
 
   // only ever store see here and only in ram
   this._seed = BIP39.mnemonicToSeedHex(mnemonic, password)
+
+  store.set('cc-wallet-engine__mnemonic', mnemonic)
+
+  if (password === '') {
+    // if password is empty then seed is recoverable from mnemonic,
+    // thus we'll save seed in localStorage to avoid re-computing it
+    store.set('cc-wallet-engine__seed', this._seed)
+  }
 }
 
 /**
@@ -358,6 +405,18 @@ WalletEngine.prototype.resetSeed = function (password) {
   }
 
   this.setPinEncrypted(this.stored_encryptedpin())
+
+  var askPinAmount = store.get('cc-wallet-engine__askpinamount')
+  if (askPinAmount)
+    this._askPinAmount = 1.0 * askPinAmount
+
+  var nickname = store.get('cc-wallet-engine__nickname')
+  if (nickname)
+    this._nickname = nickname
+
+  var sendNotifications = store.get('cc-wallet-engine__sendnotifications')
+  if (sendNotifications == true || sendNotifications == false)
+    this._sendNotifications = sendNotifications
 }
 
 /**
@@ -442,6 +501,10 @@ WalletEngine.prototype.clearStorage = function () {
   store.remove('cc-wallet-engine__mnemonic')
   store.remove('cc-wallet-engine__encryptedpin')
   store.remove('cc-wallet-engine__seed')
+  store.remove('cc-wallet-engine__askpinamount')
+  store.remove('cc-wallet-engine__nickname')
+  store.remove('cc-wallet-engine__sendnotifications')
+
   this._wallet.removeListeners()
   if (this.isInitialized()) {
     this._assetModels.removeListeners()
