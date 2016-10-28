@@ -245,7 +245,7 @@ CWPPPaymentModel.prototype.send = function (cb) {
     return Q.nfcall(request, requestOpts)
       .spread(function (response, body) {
         if (response.statusCode !== 200) {
-          var error = response.statusMessage
+          var error = response.statusText
           if (_.isObject(body) && body.error !== undefined) {
             error = body.error
           }

@@ -64,7 +64,7 @@ PaymentRequestModel.prototype.getPaymentURI = function (cb) {
         self.paymentURI = Q.nfcall(request, requestOpts)
           .spread(function (response, body) {
               if (response.statusCode !== 200) {
-                  throw new errors.RequestError('PaymentRequestModel: ' + response.statusMessage)
+                  throw new errors.RequestError('PaymentRequestModel: ' + response.statusText)
               }
 
               if ((body.hash !== cwpp.hashMessage_long(self.cwppPayReq) &&
